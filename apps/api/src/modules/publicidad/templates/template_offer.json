@@ -1,0 +1,14 @@
+{
+  "name": "Oferta Agresiva",
+  "description": "Diseño llamativo para ofertas y descuentos",
+  "background": {
+    "prompt": "bold red sale banner background, dynamic commercial design, promotional, eye-catching, price tags",
+    "style": "oferta"
+  },
+  "texts": [
+    {"text": "PRODUCT_NAME", "x": 0.5, "y": 0.08, "size": 56, "color": "#FFFFFF", "bold": true, "shadow": true},
+    {"text": "OFFER_TEXT", "x": 0.5, "y": 0.18, "size": 48, "color": "#FCD34D", "bold": true, "shadow": true},
+    {"text": "PRICE", "x": 0.5, "y": 0.85, "size": 72, "color": "#DC2626", "bold": true, "shadow": true}
+  ],
+  "product": {"scale": 0.55, "position": [0.5, 0.55]}
+}

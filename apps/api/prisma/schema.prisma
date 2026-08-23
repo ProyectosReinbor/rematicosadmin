@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VerificationStatus {
+  PENDIENTE
+  VERIFICADA
+  DISCREPANCIA
+  RECHAZADA
+}
+
+enum VerificationMethod {
+  MANUAL
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  payerName     String   @map("payer_name")
+  amount        Decimal  @db.Decimal(12, 2)
+  bank          String
+  reference     String   @unique
+  status        String   @default("PENDING")
+  paymentMethod String   @default("QR_BREB") @map("payment_method")
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("payments")
+  @@index([status])
+  @@index([createdAt])
+  @@index([reference])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  category  String
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("settings")
+}
+
+model AdImage {
+  id             String   @id @default(uuid())
+  userId         String?  @map("user_id")
+  originalUrl    String   @map("original_url")
+  noBgUrl        String?  @map("no_bg_url")
+  finalUrl       String?  @map("final_url")
+  productType    String?  @map("product_type")
+  colors         Json?
+  category       String?
+  prompt         String?
+  textStyle      String?  @map("text_style")
+  template       String?
+  provider       String?
+  generationTime Int?     @map("generation_time")
+  cost           Decimal? @db.Decimal(10, 6)
+  metadata       Json     @default("{}")
+  status         String   @default("pending")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("ad_images")
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PaymentVerification {
+  id              String             @id @default(uuid())
+  orderNumber     String             @map("order_number")
+  customerName    String             @map("customer_name")
+  expectedAmount  Decimal            @db.Decimal(12, 2) @map("expected_amount")
+  expectedDate    DateTime?          @map("expected_date")
+  receivedAmount  Decimal?           @db.Decimal(12, 2) @map("received_amount")
+  receivedDate    DateTime?          @map("received_date")
+  transactionRef  String?            @map("transaction_ref")
+  notes           String?
+  status          VerificationStatus @default(PENDIENTE)
+  verificationMethod VerificationMethod @default(MANUAL) @map("verification_method")
+  comparisonNotes String?            @map("comparison_notes")
+  verifiedAt      DateTime?          @map("verified_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@map("payment_verifications")
+  @@index([orderNumber])
+  @@index([customerName])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+  @@index([email])
+}

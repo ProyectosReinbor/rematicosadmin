@@ -1,0 +1,13 @@
+{
+  "name": "Minimalista",
+  "description": "Diseño limpio y simple",
+  "background": {
+    "prompt": "minimalist clean white background, simple elegant product display, soft shadows, professional studio photography",
+    "style": "minimalista"
+  },
+  "texts": [
+    {"text": "PRODUCT_NAME", "x": 0.5, "y": 0.08, "size": 44, "color": "#111827", "bold": true, "shadow": false},
+    {"text": "PRICE", "x": 0.5, "y": 0.9, "size": 52, "color": "#111827", "bold": true, "shadow": false}
+  ],
+  "product": {"scale": 0.55, "position": [0.5, 0.5]}
+}

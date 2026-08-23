@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["packages/shared/*"],
+      "@database/*": ["packages/database/*"],
+      "@events/*": ["packages/events/*"],
+      "@ai/*": ["packages/ai/*"],
+      "@auth/*": ["packages/auth/*"],
+      "@payments/*": ["packages/payments/*"],
+      "@notifications/*": ["packages/notifications/*"],
+      "@automations/*": ["packages/automations/*"],
+      "@admin/*": ["packages/admin/*"],
+      "@ui/*": ["packages/ui/*"]
+    }
+  },
+  "exclude": ["node_modules", ".turbo", "dist", ".next"]
+}

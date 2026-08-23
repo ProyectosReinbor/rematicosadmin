@@ -1,0 +1,125 @@
+name: rematicos
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rematicos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rematicos
+      POSTGRES_PASSWORD: rematicos
+      POSTGRES_DB: rematicos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rematicos -d rematicos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: rematicos-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:alpine
+    container_name: rematicos-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./infra/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - web
+      - storefront
+      - api
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      target: runner
+    container_name: rematicos-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://api:4000
+      - WS_URL=ws://api:4001
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  storefront:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.storefront
+      target: runner
+    container_name: rematicos-storefront
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://api:4000
+      - WS_URL=ws://api:4001
+    volumes:
+      - ./apps/storefront:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: rematicos-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://rematicos:rematicos@postgres:5432/rematicos
+      - REDIS_URL=redis://redis:6379
+      - API_PORT=4000
+      - WS_PORT=4001
+      - JWT_SECRET=change-me-in-production-min-32-characters
+      - REFRESH_TOKEN_SECRET=change-me-in-production-min-32-characters
+      - WEB_URL=https://rematicosadmin.reinbor.cloud
+      - STORE_URL=https://rematicos.reinbor.cloud
+      - TTS_PROVIDER=openai
+      - OPENAI_API_KEY=sk-placeholder
+      - BREB_ENABLED=false
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+      - ./packages/database:/app/prisma
+    ports:
+      - "4000:4000"
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

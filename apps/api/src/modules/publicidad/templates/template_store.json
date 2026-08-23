@@ -1,0 +1,14 @@
+{
+  "name": "Tienda Física",
+  "description": "Estilo para promociones de tienda física",
+  "background": {
+    "prompt": "retail store shelf background, commercial display, warm lighting, shopping environment, product showcase, promotional",
+    "style": "tienda"
+  },
+  "texts": [
+    {"text": "PRODUCT_NAME", "x": 0.5, "y": 0.06, "size": 48, "color": "#064E3B", "bold": true, "shadow": true},
+    {"text": "PRICE", "x": 0.5, "y": 0.86, "size": 64, "color": "#059669", "bold": true, "shadow": true},
+    {"text": "OFFER_TEXT", "x": 0.5, "y": 0.94, "size": 32, "color": "#34D399", "bold": true, "shadow": false}
+  ],
+  "product": {"scale": 0.55, "position": [0.5, 0.52]}
+}

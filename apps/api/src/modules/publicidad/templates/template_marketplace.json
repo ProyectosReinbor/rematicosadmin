@@ -1,0 +1,13 @@
+{
+  "name": "Marketplace",
+  "description": "Estilo limpio para marketplaces (Mercado Libre, OLX, etc.)",
+  "background": {
+    "prompt": "clean white background, minimalist product photography, e-commerce listing style, neutral professional",
+    "style": "marketplace"
+  },
+  "texts": [
+    {"text": "PRODUCT_NAME", "x": 0.5, "y": 0.06, "size": 40, "color": "#1E3A8A", "bold": true, "shadow": false},
+    {"text": "PRICE", "x": 0.5, "y": 0.9, "size": 64, "color": "#2563EB", "bold": true, "shadow": true}
+  ],
+  "product": {"scale": 0.6, "position": [0.5, 0.5]}
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Redes Sociales",
+  "description": "Diseño vibrante para Instagram, Facebook, TikTok",
+  "background": {
+    "prompt": "vibrant colorful gradient background, trendy social media style, instagram aesthetic, eye-catching commercial design",
+    "style": "redes"
+  },
+  "texts": [
+    {"text": "PRODUCT_NAME", "x": 0.5, "y": 0.06, "size": 52, "color": "#FFFFFF", "bold": true, "shadow": true},
+    {"text": "OFFER_TEXT", "x": 0.5, "y": 0.16, "size": 36, "color": "#F472B6", "bold": true, "shadow": true},
+    {"text": "PRICE", "x": 0.5, "y": 0.88, "size": 60, "color": "#FFFFFF", "bold": true, "shadow": true}
+  ],
+  "product": {"scale": 0.55, "position": [0.5, 0.52]}
+}
