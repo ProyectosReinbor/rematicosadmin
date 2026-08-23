@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../../lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,35 +10,27 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const result = await login(email, password);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error?.message || "Correo o contraseña incorrectos");
-        setIsLoading(false);
-        return;
-      }
-
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
-
-      window.location.href = "/admin/dashboard";
-    } catch {
-      setError("Error de conexión");
+    if (result.error) {
+      setError(result.error);
       setIsLoading(false);
+      return;
     }
+
+    const token = localStorage.getItem("accessToken");
+    const refresh = localStorage.getItem("refreshToken");
+    if (token) document.cookie = `accessToken=${token}; path=/; max-age=900; SameSite=Lax`;
+    if (refresh) document.cookie = `refreshToken=${refresh}; path=/; max-age=604800; SameSite=Lax`;
+
+    window.location.href = "/admin/dashboard";
   };
 
   return (

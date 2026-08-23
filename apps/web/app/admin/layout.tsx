@@ -2,7 +2,6 @@
 
 import { useAuth } from "../lib/auth";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
 import Link from "next/link";
 
 const navItems = [
@@ -16,27 +15,9 @@ const navItems = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated && pathname !== "/admin/login") {
-      router.push("/admin/login");
-    }
-  }, [isLoading, isAuthenticated, pathname, router]);
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Cargando...</p>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated && pathname !== "/admin/login") {
-    return null;
-  }
 
   if (pathname === "/admin/login") {
     return <>{children}</>;
@@ -81,7 +62,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
           <button
-            onClick={() => { logout(); router.push("/admin/login"); }}
+            onClick={() => {
+              document.cookie = "accessToken=; path=/; max-age=0";
+              document.cookie = "refreshToken=; path=/; max-age=0";
+              logout();
+              router.push("/admin/login");
+            }}
             className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
           >
             Cerrar sesión
