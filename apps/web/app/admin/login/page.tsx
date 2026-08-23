@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "../../lib/auth";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -9,7 +8,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,13 +15,28 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    const result = await login(email, password);
-    setIsLoading(false);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (result.error) {
-      setError(result.error);
-    } else {
-      router.push("/admin/dashboard");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error?.message || "Correo o contraseña incorrectos");
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+
+      window.location.href = "/admin/dashboard";
+    } catch {
+      setError("Error de conexión");
+      setIsLoading(false);
     }
   };
 
