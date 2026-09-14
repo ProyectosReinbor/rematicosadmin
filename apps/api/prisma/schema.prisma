@@ -23,6 +23,13 @@ enum UserRole {
   USER
 }
 
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  UNAVAILABLE
+  ARCHIVED
+}
+
 model Payment {
   id            String   @id @default(uuid())
   payerName     String   @map("payer_name")
@@ -127,4 +134,92 @@ model User {
 
   @@map("users")
   @@index([email])
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  imageUrl    String?   @map("image_url")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isActive    Boolean   @default(true) @map("is_active")
+  products    Product[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("categories")
+  @@index([isActive, sortOrder])
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  description String
+  details     String?
+  status      ProductStatus @default(DRAFT)
+  isFeatured  Boolean       @default(false) @map("is_featured")
+  categoryId  String        @map("category_id")
+  category    Category      @relation(fields: [categoryId], references: [id])
+  images      ProductImage[]
+  options     ProductOption[]
+  variants    ProductVariant[]
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  @@map("products")
+  @@index([categoryId, status])
+  @@index([status, isFeatured])
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?  @map("alt_text")
+  sortOrder Int      @default(0) @map("sort_order")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("product_images")
+  @@index([productId, sortOrder])
+}
+
+model ProductOption {
+  id        String        @id @default(uuid())
+  productId String        @map("product_id")
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  values    OptionValue[]
+  sortOrder Int           @default(0) @map("sort_order")
+
+  @@map("product_options")
+  @@index([productId, sortOrder])
+}
+
+model OptionValue {
+  id       String        @id @default(uuid())
+  optionId String        @map("option_id")
+  option   ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  value    String
+
+  @@map("option_values")
+  @@unique([optionId, value])
+}
+
+model ProductVariant {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  reference   String?  @map("reference")
+  attributes  Json     @default("{}")
+  imageUrl    String?  @map("image_url")
+  isAvailable Boolean  @default(true) @map("is_available")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("product_variants")
+  @@index([productId, isAvailable])
 }

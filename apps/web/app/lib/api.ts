@@ -51,7 +51,7 @@ async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
 
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-    window.location.href = "/admin/login";
+    window.location.href = "/login";
     throw new Error("Sesión expirada");
   }
 
@@ -232,4 +232,35 @@ export async function deleteVerification(id: string): Promise<void> {
 
 export async function fetchVerificationStats(): Promise<VerificationStats> {
   return apiRequest("/api/verifications/stats");
+}
+
+export type ProductStatus = "DRAFT" | "PUBLISHED" | "UNAVAILABLE" | "ARCHIVED";
+export interface CatalogCategory { id: string; name: string; slug: string; }
+export interface CatalogProduct { id: string; name: string; slug: string; description: string; details: string | null; status: ProductStatus; isFeatured: boolean; category: CatalogCategory; images: { id: string; url: string; altText: string | null }[]; options: { id: string; name: string; values: { id: string; value: string }[] }[]; }
+export interface ProductInput { name: string; description: string; details?: string; categoryId: string; status: ProductStatus; isFeatured?: boolean; images?: { url: string; altText?: string }[]; options?: { name: string; values: string[] }[]; }
+
+export async function fetchCatalogCategories(): Promise<CatalogCategory[]> { return apiRequest("/api/products/categories"); }
+export async function createCatalogCategory(name: string): Promise<CatalogCategory> { return apiRequest("/api/products/categories", { method: "POST", body: JSON.stringify({ name }) }); }
+export async function fetchAdminProducts(): Promise<{ data: CatalogProduct[] }> { return apiRequest("/api/products/admin/list"); }
+export async function createCatalogProduct(data: ProductInput): Promise<CatalogProduct> { return apiRequest("/api/products", { method: "POST", body: JSON.stringify(data) }); }
+export async function updateCatalogProduct(id: string, data: Partial<ProductInput>): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }); }
+export async function addProductImages(id: string, images: { url: string; altText?: string }[]): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}/images`, { method: "POST", body: JSON.stringify({ images }) }); }
+export async function addProductOption(id: string, option: { name: string; values: string[] }): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}/options`, { method: "POST", body: JSON.stringify(option) }); }
+export async function addProductVariant(id: string, variant: { reference?: string; attributes: Record<string, string>; imageUrl?: string; isAvailable?: boolean }) { return apiRequest(`/api/products/${id}/variants`, { method: "POST", body: JSON.stringify(variant) }); }
+
+export async function uploadImages(files: File[], altText?: string): Promise<{ url: string; altText: string }[]> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  if (altText) formData.append("altText", altText);
+  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: { message: "Error al subir imágenes" } }));
+    throw new Error(data.error?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
 }

@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -12,15 +13,19 @@ import settingsRoutes from "./routes/settings";
 import publicidadRoutes from "./modules/publicidad/routes";
 import authRoutes from "./routes/auth";
 import verificationRoutes from "./routes/verifications";
+import productRoutes from "./routes/products";
+import uploadRoutes from "./routes/upload";
 
 dotenv.config();
 
 const app = express();
 
 const allowedOrigins = [
-  process.env.WEB_URL || "http://localhost:3000",
-  process.env.STORE_URL || "http://localhost:3001",
-];
+  process.env.WEB_URL,
+  process.env.STORE_URL,
+  "http://localhost:3000",
+  "http://localhost:3001",
+].filter(Boolean) as string[];
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({
@@ -52,6 +57,10 @@ app.use("/api/audit", authenticateToken, auditRoutes);
 app.use("/api/settings", authenticateToken, settingsRoutes);
 app.use("/api/publicidad", publicidadRoutes);
 app.use("/api/verifications", verificationRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/upload", uploadRoutes);
+
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

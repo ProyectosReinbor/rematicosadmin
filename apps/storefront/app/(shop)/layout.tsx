@@ -1,11 +1,7 @@
 import Link from "next/link";
 
 const navLinks = [
-  { href: "/", label: "Inicio" },
   { href: "/products", label: "Productos" },
-  { href: "/promotions", label: "Promociones" },
-  { href: "/about", label: "Nosotros" },
-  { href: "/contact", label: "Contacto" },
 ];
 
 export default function ShopLayout({
@@ -88,11 +84,10 @@ export default function ShopLayout({
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-3">Contacto</h3>
+              <h3 className="font-semibold mb-3">Catálogo</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>Villavicencio, Meta</li>
-                <li>+57 300 123 4567</li>
-                <li>info@rematicos.com</li>
+                <li>Explora materiales para tus proyectos creativos.</li>
+                <li>Consulta disponibilidad según color, tamaño y tipo.</li>
               </ul>
               <div className="mt-4 flex gap-3">
                 <a href="#" className="text-gray-400 hover:text-white">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const adminRoutes = ["/admin/dashboard", "/admin/payments", "/admin/verificaciones", "/admin/publicidad-ia", "/admin/products", "/admin/customers", "/admin/settings"];
+const adminRoutes = ["/admin/publicidad-ia", "/admin/products"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,14 +19,18 @@ export function middleware(request: NextRequest) {
   );
 
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
-  const isLoginRoute = pathname === "/admin/login";
+  const isLoginRoute = pathname === "/login";
+
+  if (pathname === "/admin/login") {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
   if (isAdminRoute) {
     const accessToken = request.cookies.get("accessToken")?.value;
     const hasAccessTokenInStorage = request.headers.get("x-has-token");
 
     if (!accessToken && !hasAccessTokenInStorage) {
-      const loginUrl = new URL("/admin/login", request.url);
+      const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -35,7 +39,7 @@ export function middleware(request: NextRequest) {
   if (isLoginRoute) {
     const accessToken = request.cookies.get("accessToken")?.value;
     if (accessToken) {
-      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+      return NextResponse.redirect(new URL("/admin/products", request.url));
     }
   }
 

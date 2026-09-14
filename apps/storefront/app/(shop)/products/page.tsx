@@ -1,91 +1,21 @@
-import type { Metadata } from "next";
-import { categories, products } from "../../lib/products";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Productos — Adornos Remático",
-  description: "Explora nuestro catálogo completo de adornos y decoraciones",
-};
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
-function formatCOP(value: number) {
-  if (value === 0) return null;
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-  }).format(value);
-}
+type Category = { id: string; name: string; slug: string };
+type Product = { id: string; name: string; description: string; category: Category; images: { id: string; url: string; altText: string | null }[]; options: { id: string; name: string }[] };
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function ProductsPage() {
-  return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Nuestros Productos</h1>
-        <p className="mt-2 text-gray-600">
-          Encuentra los insumos perfectos para tu proyecto creativo
-        </p>
-      </div>
-
-      {/* Filtros */}
-      <div className="mb-8 flex flex-wrap gap-2">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              cat === "Todos"
-                ? "bg-[var(--color-primary)] text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {cat.charAt(0).toUpperCase() + cat.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Grid de productos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="group rounded-2xl border bg-white shadow-sm overflow-hidden hover:shadow-lg transition-shadow"
-          >
-            <div className="aspect-square bg-gray-100 overflow-hidden relative">
-              <img
-                src={product.imagen}
-                alt={product.titulo}
-                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur">
-                {product.categoria.charAt(0).toUpperCase() +
-                  product.categoria.slice(1)}
-              </span>
-            </div>
-            <div className="p-5">
-              <h3 className="font-semibold text-gray-900">{product.titulo}</h3>
-              <p className="mt-1 text-sm text-gray-500 line-clamp-3">
-                {product.descripcion}
-              </p>
-              <div className="mt-2">
-                <p className="text-sm text-gray-400">{product.detalles}</p>
-              </div>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-lg font-bold text-[var(--color-primary)]">
-                  {product.precio_desde > 0
-                    ? formatCOP(product.precio_desde)
-                    : product.precio_texto}
-                </span>
-              </div>
-              <a
-                href={`https://wa.me/573001234567?text=Hola, me interesa: ${product.titulo}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 block w-full rounded-full bg-[var(--color-primary)] py-2 text-center text-sm font-medium text-white hover:bg-[var(--color-primary-dark)] transition-colors"
-              >
-                {product.boton_texto}
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [category, setCategory] = useState("");
+  const [search, setSearch] = useState("");
+  const [option, setOption] = useState("");
+  const [optionValue, setOptionValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { fetch(`${API_URL}/api/products/categories`).then((res) => res.json()).then(setCategories).catch(() => setCategories([])); }, []);
+  useEffect(() => { const params = new URLSearchParams(); if (category) params.set("category", category); if (search) params.set("search", search); if (option && optionValue) { params.set("option", option); params.set("optionValue", optionValue); } setLoading(true); fetch(`${API_URL}/api/products?${params}`).then((res) => res.json()).then((data) => setProducts(data.data || [])).catch(() => setProducts([])).finally(() => setLoading(false)); }, [category, search, option, optionValue]);
+  return <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8"><h1 className="text-3xl font-bold text-gray-900">Nuestros Productos</h1><p className="mt-2 text-gray-600">Encuentra los insumos perfectos para tu proyecto creativo.</p></div><div className="mb-4 grid max-w-3xl gap-3 md:grid-cols-3"><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre" className="rounded-full border px-4 py-2" /><select value={option} onChange={(event) => setOption(event.target.value)} className="rounded-full border px-4 py-2"><option value="">Filtrar por atributo</option><option value="Color">Color</option><option value="Tamaño">Tamaño</option><option value="Tipo">Tipo</option><option value="Material">Material</option></select><input value={optionValue} onChange={(event) => setOptionValue(event.target.value)} placeholder="Ej. rojo, grande" className="rounded-full border px-4 py-2" /></div><div className="mb-8 flex flex-wrap gap-2"><button onClick={() => setCategory("")} className={`rounded-full px-4 py-2 text-sm font-medium ${!category ? "bg-[var(--color-primary)] text-white" : "bg-gray-100 text-gray-700"}`}>Todos</button>{categories.map((item) => <button key={item.id} onClick={() => setCategory(item.slug)} className={`rounded-full px-4 py-2 text-sm font-medium ${category === item.slug ? "bg-[var(--color-primary)] text-white" : "bg-gray-100 text-gray-700"}`}>{item.name}</button>)}</div>{loading ? <p className="text-gray-500">Cargando catálogo…</p> : products.length === 0 ? <p className="rounded-lg bg-gray-50 p-6 text-gray-600">Aún no encontramos productos con esos filtros.</p> : <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.map((product) => <article key={product.id} className="group overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-lg"><Link href={`/products/${product.slug}`} className="block"><div className="aspect-square bg-gray-100">{product.images[0] ? <img src={product.images[0].url} alt={product.images[0].altText || product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /> : <div className="flex h-full items-center justify-center text-gray-400">Sin imagen</div>}</div><div className="p-5"><span className="rounded-full bg-pink-50 px-2 py-1 text-xs text-[var(--color-primary)]">{product.category.name}</span><h2 className="mt-3 font-semibold text-gray-900">{product.name}</h2><p className="mt-1 line-clamp-3 text-sm text-gray-500">{product.description}</p>{product.options.length > 0 && <p className="mt-3 text-xs text-gray-500">Disponible en {product.options.map((option) => option.name).join(", ")}</p>}<span className="mt-4 block text-sm font-medium text-[var(--color-primary)]">Ver detalles</span></div></Link></article>)}</div>}</div>;
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../lib/auth";
+import { useAuth } from "../lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -30,7 +30,7 @@ export default function LoginPage() {
     if (token) document.cookie = `accessToken=${token}; path=/; max-age=900; SameSite=Lax`;
     if (refresh) document.cookie = `refreshToken=${refresh}; path=/; max-age=604800; SameSite=Lax`;
 
-    window.location.href = "/admin/dashboard";
+    window.location.href = "/admin/products";
   };
 
   return (

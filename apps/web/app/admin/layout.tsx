@@ -5,23 +5,14 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 const navItems = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/admin/payments", label: "Pagos", icon: "💰" },
-  { href: "/admin/verificaciones", label: "Verificar Pagos", icon: "✅" },
   { href: "/admin/publicidad-ia", label: "Publicidad IA", icon: "🎨" },
   { href: "/admin/products", label: "Productos", icon: "📦" },
-  { href: "/admin/customers", label: "Clientes", icon: "👥" },
-  { href: "/admin/settings", label: "Configuración", icon: "⚙️" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
-  if (pathname === "/admin/login") {
-    return <>{children}</>;
-  }
 
   return (
     <div className="flex min-h-screen">
@@ -66,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               document.cookie = "accessToken=; path=/; max-age=0";
               document.cookie = "refreshToken=; path=/; max-age=0";
               logout();
-              router.push("/admin/login");
+              router.push("/login");
             }}
             className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
           >
