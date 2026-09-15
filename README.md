@@ -120,8 +120,8 @@ npm run dev
 
 ### URLs
 
-- Frontend: http://localhost:3000
-- Admin: http://localhost:3000/admin/login
+- Frontend: http://localhost:3001/products
+- Admin: http://localhost:3000/login
 - API: http://localhost:4000
 - WebSocket: ws://localhost:4001
 
