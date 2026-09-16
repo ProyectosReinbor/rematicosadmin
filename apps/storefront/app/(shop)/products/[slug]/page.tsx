@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
+import AddToListModal from "../../components/AddToListModal";
 
 type ProductImage = { id: string; url: string; altText: string | null };
 type OptionValue = { id: string; value: string; imageUrl: string | null };
 type ProductOption = { id: string; name: string; values: OptionValue[] };
 type Product = {
-  name: string; description: string; details: string | null; category: { name: string };
+  id: string; name: string; slug: string; description: string; details: string | null; unit: string; category: { name: string };
   images: ProductImage[];
   options: ProductOption[];
 };
@@ -16,6 +17,24 @@ type CarouselImage = ProductImage & { source: "product" | "attribute"; optionNam
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
+const UNIT_LABELS: Record<string, string> = {
+  UNIDAD: "unidad",
+  METRO: "metro(s)",
+  METRO_CUADRADO: "m²",
+  METRO_LINEAL: "ml",
+  KILOGRAMO: "kg",
+  LIBRA: "lb",
+  PAQUETE_1000: "paquete(s)",
+  PAQUETE_500: "paquete(s)",
+  PAQUETE_250: "paquete(s)",
+  PAQUETE_100: "paquete(s)",
+  DOCENA: "docena(s)",
+  PAR: "par(es)",
+  JUEGO: "juego(s)",
+  ROLLO: "rollo(s)",
+  CAJA: "caja(s)",
+};
+
 export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [product, setProduct] = useState<Product | null>(null);
@@ -23,6 +42,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const [selection, setSelection] = useState<Record<string, string>>({});
   const [notFound, setNotFound] = useState(false);
   const [allImages, setAllImages] = useState<CarouselImage[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const thumbStripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!thumbStripRef.current) return;
+    const activeBtn = thumbStripRef.current.querySelector("[data-active='true']") as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [selectedImage]);
 
   useEffect(() => {
     fetch(`${API_URL}/api/products/${slug}`)
@@ -34,13 +63,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       .catch(() => setNotFound(true));
   }, [slug]);
 
-  // Build combined image list: product images + option value images (no duplicates)
   useEffect(() => {
     if (!product) return;
     const seen = new Set<string>();
     const combined: CarouselImage[] = [];
 
-    // Product images first
     for (const img of product.images) {
       if (!seen.has(img.url)) {
         seen.add(img.url);
@@ -48,7 +75,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       }
     }
 
-    // Option value images
     for (const option of product.options) {
       for (const value of option.values) {
         if (value.imageUrl && !seen.has(value.imageUrl)) {
@@ -77,12 +103,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
   if (!product) return <main className="mx-auto max-w-4xl px-4 py-20 text-gray-500">Cargando producto…</main>;
 
-  const selectedOptions = Object.entries(selection).map(([name, value]) => `${name}: ${value}`).join(", ");
-  const message = `Hola, me interesa: ${product.name}${selectedOptions ? `. Opciones: ${selectedOptions}` : ""}`;
-
-  // Find the index of an option value's image in the combined array
   function findImageIndex(imageUrl: string): number {
     return allImages.findIndex((img) => img.url === imageUrl);
+  }
+
+  function isCurrentAttribute(imageUrl: string | null): boolean {
+    if (!imageUrl || !allImages[selectedImage]) return false;
+    return allImages[selectedImage].url === imageUrl;
   }
 
   return (
@@ -93,7 +120,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             <img
               src={allImages[selectedImage].url}
               alt={allImages[selectedImage].altText || product.name}
-              className="h-full w-full object-cover transition-opacity duration-300"
+              className="h-full w-full object-cover animate-[fadeIn_0.35s_ease-in-out]"
               key={allImages[selectedImage].id}
             />
           ) : product.images[0] ? (
@@ -134,14 +161,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           )}
         </div>
         {allImages.length > 1 && (
-          <div className="mt-3 flex gap-3 overflow-auto pb-1">
+          <div className="mt-3 flex gap-3 overflow-auto pb-1" ref={thumbStripRef}>
             {allImages.map((image, index) => (
               <button
                 key={image.id}
                 onClick={() => setSelectedImage(index)}
+                data-active={index === selectedImage}
                 className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
                   index === selectedImage
-                    ? "border-[var(--color-primary)] scale-105"
+                    ? "border-[var(--color-primary)] scale-105 ring-2 ring-[var(--color-primary)]/30"
                     : "border-transparent hover:border-gray-300"
                 }`}
               >
@@ -161,7 +189,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         <Link href="/products" className="text-sm text-[var(--color-primary)]">← Volver al catálogo</Link>
         <p className="mt-5 text-sm text-gray-500">{product.category.name}</p>
         <h1 className="mt-1 text-3xl font-bold text-gray-900">{product.name}</h1>
-        <p className="mt-5 leading-relaxed text-gray-600">{product.description}</p>
+        <p className="mt-1 text-sm text-gray-500">Venta por {UNIT_LABELS[product.unit] || product.unit}</p>
+        <p className="mt-3 leading-relaxed text-gray-600">{product.description}</p>
 
         {product.details && (
           <div className="mt-6 rounded-xl bg-gray-50 p-4">
@@ -170,48 +199,59 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           </div>
         )}
 
-        <div className="mt-7 space-y-5">
-          {product.options.map((option) => (
-            <fieldset key={option.id}>
-              <legend className="mb-2 text-sm font-semibold text-gray-800">{option.name}</legend>
-              <div className="flex flex-wrap gap-2">
-                {option.values.map((value) => (
-                  <button
-                    key={value.id}
-                    onClick={() => {
-                      setSelection((current) => ({ ...current, [option.name]: value.value }));
-                      // Navigate carousel to the attribute image
-                      if (value.imageUrl) {
-                        const idx = findImageIndex(value.imageUrl);
-                        if (idx !== -1) setSelectedImage(idx);
-                      }
-                    }}
-                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
-                      selection[option.name] === value.value
-                        ? "border-[var(--color-primary)] bg-pink-50 text-[var(--color-primary)]"
-                        : "border-gray-300 text-gray-700 hover:border-gray-400"
-                    }`}
-                  >
-                    {value.imageUrl && (
-                      <img src={value.imageUrl} alt={value.value} className="h-6 w-6 rounded-full object-cover" />
-                    )}
-                    {value.value}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-        </div>
+        {product.options.length > 0 && (
+          <div className="mt-7 space-y-5">
+            {product.options.map((option) => (
+              <fieldset key={option.id}>
+                <legend className="mb-2 text-sm font-semibold text-gray-800">{option.name}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {option.values.map((value) => {
+                    const isActive = selection[option.name] === value.value;
+                    const isShowing = isCurrentAttribute(value.imageUrl);
+                    return (
+                      <button
+                        key={value.id}
+                        onClick={() => {
+                          setSelection((current) => ({ ...current, [option.name]: value.value }));
+                          if (value.imageUrl) {
+                            const idx = findImageIndex(value.imageUrl);
+                            if (idx !== -1) setSelectedImage(idx);
+                          }
+                        }}
+                        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all duration-200 ${
+                          isActive
+                            ? "border-[var(--color-primary)] bg-pink-50 text-[var(--color-primary)] shadow-md shadow-pink-200/50"
+                            : "border-gray-300 text-gray-700 hover:border-gray-400"
+                        } ${isShowing && value.imageUrl ? "animate-[bounce_0.4s_ease-in-out]" : ""}`}
+                      >
+                        {value.imageUrl && (
+                          <img src={value.imageUrl} alt={value.value} className={`h-6 w-6 rounded-full object-cover transition-transform duration-200 ${isShowing ? "scale-110" : ""}`} />
+                        )}
+                        {value.value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            ))}
+          </div>
+        )}
 
-        <a
-          href={`https://wa.me/573001234567?text=${encodeURIComponent(message)}`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => setShowModal(true)}
           className="mt-8 inline-block w-full rounded-xl bg-[var(--color-primary)] py-3 text-center text-white font-semibold hover:opacity-90 transition"
         >
-          Consultar disponibilidad
-        </a>
+          Agregar a mi lista
+        </button>
       </section>
+
+      {product && (
+        <AddToListModal
+          product={{ id: product.id, name: product.name, slug: product.slug, unit: product.unit, images: product.images, options: product.options }}
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </main>
   );
 }

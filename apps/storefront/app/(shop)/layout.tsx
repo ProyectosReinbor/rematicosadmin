@@ -1,7 +1,9 @@
 import Link from "next/link";
+import ShoppingListButton from "./components/ShoppingListButton";
 
 const navLinks = [
   { href: "/products", label: "Productos" },
+  { href: "/shopping-list", label: "Mi lista" },
 ];
 
 export default function ShopLayout({
@@ -34,8 +36,9 @@ export default function ShopLayout({
             </nav>
 
             <div className="flex items-center gap-3">
+              <ShoppingListButton />
               <a
-                href="https://wa.me/573001234567"
+                href="https://wa.me/573113487967"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden sm:inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-dark)] transition-colors"

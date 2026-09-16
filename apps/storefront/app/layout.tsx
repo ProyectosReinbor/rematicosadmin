@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ShoppingListProvider } from "./lib/shopping-list-context";
 
 export const metadata: Metadata = {
   title: "Adornos Remático — Catálogo de insumos creativos",
@@ -14,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <ShoppingListProvider>{children}</ShoppingListProvider>
+      </body>
     </html>
   );
 }

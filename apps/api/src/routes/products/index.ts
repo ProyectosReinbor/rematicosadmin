@@ -12,6 +12,7 @@ const optionSchema = z.object({ name: z.string().min(1).max(60), values: z.array
 const productSchema = z.object({
   name: z.string().min(3).max(160), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
   description: z.string().min(20).max(2000), details: z.string().max(3000).optional(), categoryId: z.string().uuid(),
+  unit: z.string().max(60).optional(),
   status: z.nativeEnum(ProductStatus).optional(), isFeatured: z.boolean().optional(),
   images: z.array(imageSchema).max(12).optional(),
   options: z.array(optionSchema).max(6).optional(),
@@ -79,7 +80,7 @@ router.post("/", async (req: Request, res: Response) => {
   const product = await prisma.product.create({
     data: {
       name: data.name, slug: data.slug || slugify(data.name), description: data.description,
-      details: data.details, categoryId: data.categoryId, status: data.status || "DRAFT", isFeatured: data.isFeatured || false,
+      details: data.details, unit: data.unit || "UNIDAD", categoryId: data.categoryId, status: data.status || "DRAFT", isFeatured: data.isFeatured || false,
       images: data.images ? { create: data.images.map((image, index) => ({ ...image, sortOrder: index, isPrimary: index === 0 })) } : undefined,
       options: data.options ? { create: data.options.map((option, index) => ({
         name: option.name, sortOrder: index,
@@ -97,6 +98,7 @@ router.put("/:id", async (req: Request, res: Response) => {
     name: z.string().min(3).max(160).optional(),
     description: z.string().min(20).max(2000).optional(),
     details: z.string().max(3000).optional().nullable(),
+    unit: z.string().max(60).optional(),
     categoryId: z.string().uuid().optional(),
     status: z.nativeEnum(ProductStatus).optional(),
     isFeatured: z.boolean().optional(),
@@ -107,6 +109,7 @@ router.put("/:id", async (req: Request, res: Response) => {
   if (data.name !== undefined) { updateData.name = data.name; updateData.slug = slugify(data.name); }
   if (data.description !== undefined) updateData.description = data.description;
   if (data.details !== undefined) updateData.details = data.details;
+  if (data.unit !== undefined) updateData.unit = data.unit;
   if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
@@ -122,6 +125,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
   if (data.name !== undefined) { updateData.name = data.name; updateData.slug = slugify(data.name); }
   if (data.description !== undefined) updateData.description = data.description;
   if (data.details !== undefined) updateData.details = data.details;
+  if (data.unit !== undefined) updateData.unit = data.unit;
   if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;

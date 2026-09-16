@@ -158,6 +158,7 @@ model Product {
   slug        String        @unique
   description String
   details     String?
+  unit        String        @default("UNIDAD")
   status      ProductStatus @default(DRAFT)
   isFeatured  Boolean       @default(false) @map("is_featured")
   categoryId  String        @map("category_id")

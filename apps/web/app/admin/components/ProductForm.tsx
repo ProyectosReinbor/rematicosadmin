@@ -32,6 +32,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
   const [name, setName] = useState(product?.name || "");
   const [description, setDescription] = useState(product?.description || "");
   const [details, setDetails] = useState(product?.details || "");
+  const [unit, setUnit] = useState(product?.unit || "UNIDAD");
   const [categoryId, setCategoryId] = useState(product?.categoryId || "");
   const [status, setStatus] = useState<ProductStatus>(product?.status || "DRAFT");
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured || false);
@@ -109,12 +110,12 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
 
   const handleOptionImageUpload = async (optIdx: number, valIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !product) return;
+    if (!file) return;
     try {
       const [uploaded] = await uploadImages([file], options[optIdx].values[valIdx].value);
       const opt = options[optIdx];
       const val = opt.values[valIdx];
-      if (val.id) {
+      if (product && val.id) {
         await updateOptionValue(product.id, opt.id!, val.id, { imageUrl: uploaded.url });
       }
       setOptions((prev) => prev.map((o, i) => i === optIdx ? { ...o, values: o.values.map((v, j) => j === valIdx ? { ...v, imageUrl: uploaded.url } : v) } : o));
@@ -128,7 +129,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
     try {
       if (isEdit && product) {
         // Update basic fields
-        await fullUpdateProduct(product.id, { name, description, details: details || null, categoryId, status, isFeatured });
+        await fullUpdateProduct(product.id, { name, description, details: details || null, unit, categoryId, status, isFeatured });
 
         // Upload new images
         if (newImageFiles.length > 0) {
@@ -165,7 +166,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
           imagesPayload = uploaded.map((img) => ({ url: img.url, altText: name }));
         }
         await createCatalogProduct({
-          name, description, details: details || undefined, categoryId, status, isFeatured,
+          name, description, details: details || undefined, unit, categoryId, status, isFeatured,
           images: imagesPayload,
           options: options.filter((o) => o.name && o.values.length > 0).map((o) => ({
             name: o.name,
@@ -203,6 +204,26 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
           <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1 w-full rounded border px-3 py-2">
             <option value="">Selecciona una categoría</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">
+          Unidad de venta
+          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="mt-1 w-full rounded border px-3 py-2">
+            <option value="UNIDAD">Unidad</option>
+            <option value="METRO">Metro</option>
+            <option value="METRO_CUADRADO">Metro cuadrado</option>
+            <option value="METRO_LINEAL">Metro lineal</option>
+            <option value="KILOGRAMO">Kilogramo</option>
+            <option value="LIBRA">Libra</option>
+            <option value="PAQUETE_1000">Paquete de 1000</option>
+            <option value="PAQUETE_500">Paquete de 500</option>
+            <option value="PAQUETE_250">Paquete de 250</option>
+            <option value="PAQUETE_100">Paquete de 100</option>
+            <option value="DOCENA">Docena</option>
+            <option value="PAR">Par</option>
+            <option value="JUEGO">Juego</option>
+            <option value="ROLLO">Rollo</option>
+            <option value="CAJA">Caja</option>
           </select>
         </label>
         <label className="md:col-span-2 text-sm">
