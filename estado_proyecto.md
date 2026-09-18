@@ -9,7 +9,6 @@
 
 **Remáticos** (Adornos Remático) es una tienda física de adornos y materiales creativos en Villavicencio, Meta, Colombia. El proyecto es un **monorepo** que administra:
 
-- Un **panel de administración** (admin) para gestionar productos, pagos y publicidad con IA
 - Una **tienda pública** (storefront) para que los clientes vean productos y armen listas de compra por WhatsApp
 - Una **API REST** que conecta todo con PostgreSQL y Redis
 
@@ -55,7 +54,6 @@ rematicos/
 │   │   │   ├── middleware/     # auth, errorHandler, rateLimiter, validation
 │   │   │   ├── routes/         # Todas las rutas API
 │   │   │   ├── services/       # PaymentService, VerificationService
-│   │   │   ├── modules/        # Módulo publicidad (IA)
 │   │   │   ├── utils/          # Logger (Winston)
 │   │   │   └── types/          # Express type augmentation
 │   │   ├── prisma/
@@ -67,7 +65,6 @@ rematicos/
 │   │       ├── login/          # Login page
 │   │       ├── admin/          # Layout con sidebar
 │   │       │   ├── products/   # CRUD productos COMPLETO
-│   │       │   ├── publicidad-ia/  # Generador de publicidad con IA
 │   │       │   ├── customers/  # Placeholder
 │   │       │   └── settings/   # Placeholder
 │   │       ├── (public)/       # Páginas públicas (about, catalog, etc.)
@@ -125,7 +122,6 @@ User              → Usuarios del admin (ADMIN/USER)
 Payment           → Pagos QR Bre-B tracking
 AuditLog          → Registro de auditoría
 Setting           → Configuraciones clave-valor
-AdImage           → Imágenes de publicidad generadas con IA
 PaymentVerification → Verificación/reconciliación de pagos
 Category          → Categorías de productos
 Product           → Productos del catálogo

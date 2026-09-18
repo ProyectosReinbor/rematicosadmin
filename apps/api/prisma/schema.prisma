@@ -172,6 +172,7 @@ model Product {
   @@map("products")
   @@index([categoryId, status])
   @@index([status, isFeatured])
+  @@index([name])
 }
 
 model ProductImage {
@@ -205,7 +206,6 @@ model OptionValue {
   optionId String        @map("option_id")
   option   ProductOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
   value    String
-  imageUrl String?       @map("image_url")
 
   @@map("option_values")
   @@unique([optionId, value])

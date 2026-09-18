@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
 const navItems = [
-  { href: "/admin/publicidad-ia", label: "Publicidad IA", icon: "🎨" },
   { href: "/admin/products", label: "Productos", icon: "📦" },
 ];
 
@@ -29,11 +28,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                  isActive
+                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive
                     ? "bg-blue-50 text-blue-700 font-medium"
                     : "text-gray-700 hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>

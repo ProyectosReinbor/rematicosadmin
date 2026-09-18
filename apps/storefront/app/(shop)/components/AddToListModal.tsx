@@ -5,7 +5,7 @@ import { useShoppingList } from "../../lib/shopping-list-context";
 
 type Product = {
   id: string; name: string; slug: string; unit: string; images: { url: string; altText: string | null }[];
-  options: { id: string; name: string; values: { id: string; value: string; imageUrl: string | null }[] }[];
+  options: { id: string; name: string; values: { id: string; value: string }[] }[];
 };
 
 const UNIT_LABELS: Record<string, string> = {
@@ -92,9 +92,6 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
                         : "border-gray-300 text-gray-700 hover:border-gray-400"
                     }`}
                   >
-                    {value.imageUrl && (
-                      <img src={value.imageUrl} alt={value.value} className="mr-1 inline h-4 w-4 rounded-full object-cover" />
-                    )}
                     {value.value}
                   </button>
                 ))}

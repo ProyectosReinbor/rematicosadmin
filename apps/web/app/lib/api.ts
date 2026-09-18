@@ -236,14 +236,25 @@ export async function fetchVerificationStats(): Promise<VerificationStats> {
 
 export type ProductStatus = "DRAFT" | "PUBLISHED" | "UNAVAILABLE" | "ARCHIVED";
 export interface CatalogCategory { id: string; name: string; slug: string; }
-export interface OptionValueImage { id: string; value: string; imageUrl: string | null; }
-export interface CatalogOption { id: string; name: string; values: OptionValueImage[]; }
+export interface OptionValueItem { id: string; value: string; }
+export interface CatalogOption { id: string; name: string; values: OptionValueItem[]; }
 export interface CatalogProduct { id: string; name: string; slug: string; description: string; details: string | null; unit: string; status: ProductStatus; isFeatured: boolean; category: CatalogCategory; images: { id: string; url: string; altText: string | null; sortOrder: number; isPrimary: boolean }[]; options: CatalogOption[]; variants: { id: string; reference: string | null; attributes: Record<string, string>; imageUrl: string | null; isAvailable: boolean }[]; }
-export interface ProductInput { name: string; description: string; details?: string; unit?: string; categoryId: string; status: ProductStatus; isFeatured?: boolean; images?: { url: string; altText?: string }[]; options?: { name: string; values: { value: string; imageUrl?: string }[] }[]; }
+export interface ProductInput { name: string; description: string; details?: string; unit?: string; categoryId: string; status: ProductStatus; isFeatured?: boolean; images?: { url: string; altText?: string }[]; options?: { name: string; values: { value: string }[] }[]; }
+
+export interface ProductPagination { page: number; limit: number; total: number; totalPages: number; }
 
 export async function fetchCatalogCategories(): Promise<CatalogCategory[]> { return apiRequest("/api/products/categories"); }
 export async function createCatalogCategory(name: string): Promise<CatalogCategory> { return apiRequest("/api/products/categories", { method: "POST", body: JSON.stringify({ name }) }); }
-export async function fetchAdminProducts(): Promise<{ data: CatalogProduct[] }> { return apiRequest("/api/products/admin/list"); }
+export async function fetchAdminProducts(params?: { page?: number; limit?: number; search?: string; category?: string; status?: string }): Promise<{ data: CatalogProduct[]; pagination: ProductPagination }> {
+  const sp = new URLSearchParams();
+  if (params?.page) sp.set("page", String(params.page));
+  if (params?.limit) sp.set("limit", String(params.limit));
+  if (params?.search) sp.set("search", params.search);
+  if (params?.category) sp.set("category", params.category);
+  if (params?.status) sp.set("status", params.status);
+  return apiRequest(`/api/products/admin/list?${sp}`);
+}
+export async function fetchAdminProductStats(): Promise<{ total: number; published: number; draft: number }> { return apiRequest("/api/products/admin/count"); }
 export async function createCatalogProduct(data: ProductInput): Promise<CatalogProduct> { return apiRequest("/api/products", { method: "POST", body: JSON.stringify(data) }); }
 export async function updateCatalogProduct(id: string, data: Partial<ProductInput>): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }); }
 export async function fullUpdateProduct(id: string, data: { name?: string; description?: string; details?: string | null; unit?: string; categoryId?: string; status?: ProductStatus; isFeatured?: boolean }): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}`, { method: "PUT", body: JSON.stringify(data) }); }
@@ -251,11 +262,11 @@ export async function deleteProduct(id: string): Promise<void> { return apiReque
 export async function addProductImages(id: string, images: { url: string; altText?: string }[]): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}/images`, { method: "POST", body: JSON.stringify({ images }) }); }
 export async function reorderProductImages(id: string, imageIds: string[]): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}/images/reorder`, { method: "PUT", body: JSON.stringify({ imageIds }) }); }
 export async function deleteProductImage(id: string, imageId: string): Promise<void> { return apiRequest(`/api/products/${id}/images/${imageId}`, { method: "DELETE" }); }
-export async function addProductOption(id: string, option: { name: string; values: { value: string; imageUrl?: string }[] }): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}/options`, { method: "POST", body: JSON.stringify(option) }); }
+export async function addProductOption(id: string, option: { name: string; values: { value: string }[] }): Promise<CatalogProduct> { return apiRequest(`/api/products/${id}/options`, { method: "POST", body: JSON.stringify(option) }); }
 export async function updateProductOption(productId: string, optionId: string, data: { name?: string }): Promise<CatalogProduct> { return apiRequest(`/api/products/${productId}/options/${optionId}`, { method: "PUT", body: JSON.stringify(data) }); }
 export async function deleteProductOption(productId: string, optionId: string): Promise<void> { return apiRequest(`/api/products/${productId}/options/${optionId}`, { method: "DELETE" }); }
-export async function addOptionValue(productId: string, optionId: string, data: { value: string; imageUrl?: string }): Promise<CatalogProduct> { return apiRequest(`/api/products/${productId}/options/${optionId}/values`, { method: "POST", body: JSON.stringify(data) }); }
-export async function updateOptionValue(productId: string, optionId: string, valueId: string, data: { value?: string; imageUrl?: string | null }): Promise<CatalogProduct> { return apiRequest(`/api/products/${productId}/options/${optionId}/values/${valueId}`, { method: "PUT", body: JSON.stringify(data) }); }
+export async function addOptionValue(productId: string, optionId: string, data: { value: string }): Promise<CatalogProduct> { return apiRequest(`/api/products/${productId}/options/${optionId}/values`, { method: "POST", body: JSON.stringify(data) }); }
+export async function updateOptionValue(productId: string, optionId: string, valueId: string, data: { value?: string }): Promise<CatalogProduct> { return apiRequest(`/api/products/${productId}/options/${optionId}/values/${valueId}`, { method: "PUT", body: JSON.stringify(data) }); }
 export async function deleteOptionValue(productId: string, optionId: string, valueId: string): Promise<void> { return apiRequest(`/api/products/${productId}/options/${optionId}/values/${valueId}`, { method: "DELETE" }); }
 export async function addProductVariant(id: string, variant: { reference?: string; attributes: Record<string, string>; imageUrl?: string; isAvailable?: boolean }) { return apiRequest(`/api/products/${id}/variants`, { method: "POST", body: JSON.stringify(variant) }); }
 export async function deleteProductVariant(productId: string, variantId: string): Promise<void> { return apiRequest(`/api/products/${productId}/variants/${variantId}`, { method: "DELETE" }); }
