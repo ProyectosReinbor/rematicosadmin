@@ -8,11 +8,11 @@ interface AppError extends Error {
 
 export function errorHandler(
   err: AppError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) {
-  logger.error(`${err.message}`, { stack: err.stack });
+  logger.error(`[ERROR_HANDLER] ${req.method} ${req.path} - ${err.message}`, { stack: err.stack, code: err.code, statusCode: err.statusCode });
 
   const statusCode = err.statusCode || 500;
   const code = err.code || "INTERNAL_ERROR";

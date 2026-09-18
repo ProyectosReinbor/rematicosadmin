@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, use, useRef } from "react";
+import { useEffect, useState, use, useRef, useCallback } from "react";
 import AddToListModal from "../../components/AddToListModal";
 
 type ProductImage = { id: string; url: string; altText: string | null };
@@ -18,21 +18,10 @@ type CarouselImage = ProductImage & { source: "product" | "attribute"; optionNam
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: "unidad",
-  METRO: "metro(s)",
-  METRO_CUADRADO: "m²",
-  METRO_LINEAL: "ml",
-  KILOGRAMO: "kg",
-  LIBRA: "lb",
-  PAQUETE_1000: "paquete(s)",
-  PAQUETE_500: "paquete(s)",
-  PAQUETE_250: "paquete(s)",
-  PAQUETE_100: "paquete(s)",
-  DOCENA: "docena(s)",
-  PAR: "par(es)",
-  JUEGO: "juego(s)",
-  ROLLO: "rollo(s)",
-  CAJA: "caja(s)",
+  UNIDAD: "unidad", METRO: "metro(s)", METRO_CUADRADO: "m²", METRO_LINEAL: "ml",
+  KILOGRAMO: "kg", LIBRA: "lb", PAQUETE_1000: "paquete(s)", PAQUETE_500: "paquete(s)",
+  PAQUETE_250: "paquete(s)", PAQUETE_100: "paquete(s)", DOCENA: "docena(s)",
+  PAR: "par(es)", JUEGO: "juego(s)", ROLLO: "rollo(s)", CAJA: "caja(s)",
 };
 
 export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -43,7 +32,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const [notFound, setNotFound] = useState(false);
   const [allImages, setAllImages] = useState<CarouselImage[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"desc" | "det">("desc");
   const thumbStripRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
     if (!thumbStripRef.current) return;
@@ -67,41 +59,39 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     if (!product) return;
     const seen = new Set<string>();
     const combined: CarouselImage[] = [];
-
     for (const img of product.images) {
-      if (!seen.has(img.url)) {
-        seen.add(img.url);
-        combined.push({ ...img, source: "product" });
-      }
+      if (!seen.has(img.url)) { seen.add(img.url); combined.push({ ...img, source: "product" }); }
     }
-
     for (const option of product.options) {
       for (const value of option.values) {
         if (value.imageUrl && !seen.has(value.imageUrl)) {
           seen.add(value.imageUrl);
-          combined.push({
-            id: value.id,
-            url: value.imageUrl,
-            altText: `${option.name}: ${value.value}`,
-            source: "attribute",
-            optionName: option.name,
-            optionValue: value.value,
-          });
+          combined.push({ id: value.id, url: value.imageUrl, altText: `${option.name}: ${value.value}`, source: "attribute", optionName: option.name, optionValue: value.value });
         }
       }
     }
-
     setAllImages(combined);
   }, [product]);
 
-  if (notFound) return (
-    <main className="mx-auto max-w-4xl px-4 py-20 text-center">
-      <h1 className="text-2xl font-bold">Producto no disponible</h1>
-      <Link href="/products" className="mt-4 inline-block text-[var(--color-primary)]">Volver al catálogo</Link>
-    </main>
-  );
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
 
-  if (!product) return <main className="mx-auto max-w-4xl px-4 py-20 text-gray-500">Cargando producto…</main>;
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!allImages.length) return;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        setSelectedImage((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+      } else {
+        setSelectedImage((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+      }
+    }
+  }, [allImages.length]);
 
   function findImageIndex(imageUrl: string): number {
     return allImages.findIndex((img) => img.url === imageUrl);
@@ -112,138 +102,238 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     return allImages[selectedImage].url === imageUrl;
   }
 
+  if (notFound) return (
+    <main className="mx-auto max-w-4xl px-4 py-16 sm:py-24 text-center">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-pink-50 mb-6">
+        <svg className="w-8 h-8 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h1 className="text-2xl font-bold text-gray-900">Producto no encontrado</h1>
+      <p className="mt-2 text-gray-500">El producto que buscas no está disponible o fue removido.</p>
+      <Link href="/products" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-primary-dark)] transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+        Volver al catálogo
+      </Link>
+    </main>
+  );
+
+  if (!product) return (
+    <main className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
+      <div className="animate-pulse space-y-6">
+        <div className="aspect-square bg-gray-200 rounded-2xl" />
+        <div className="h-6 bg-gray-200 rounded w-1/3" />
+        <div className="h-8 bg-gray-200 rounded w-2/3" />
+        <div className="h-4 bg-gray-200 rounded w-full" />
+      </div>
+    </main>
+  );
+
   return (
-    <main className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-2 sm:px-6 lg:px-8">
-      <section>
-        <div className="relative aspect-square overflow-hidden rounded-2xl bg-gray-100 group">
-          {allImages[selectedImage] ? (
-            <img
-              src={allImages[selectedImage].url}
-              alt={allImages[selectedImage].altText || product.name}
-              className="h-full w-full object-cover animate-[fadeIn_0.35s_ease-in-out]"
-              key={allImages[selectedImage].id}
-            />
-          ) : product.images[0] ? (
-            <img
-              src={product.images[0].url}
-              alt={product.images[0].altText || product.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-gray-400">Sin imagen disponible</div>
-          )}
-          {allImages.length > 1 && (
-            <>
-              <button
-                onClick={() => setSelectedImage((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
-                className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                aria-label="Imagen anterior"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setSelectedImage((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                aria-label="Siguiente imagen"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </>
-          )}
-          {allImages[selectedImage]?.source === "attribute" && (
-            <span className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-md">
-              {allImages[selectedImage].optionName}: {allImages[selectedImage].optionValue}
-            </span>
-          )}
-        </div>
-        {allImages.length > 1 && (
-          <div className="mt-3 flex gap-3 overflow-auto pb-1" ref={thumbStripRef}>
-            {allImages.map((image, index) => (
-              <button
-                key={image.id}
-                onClick={() => setSelectedImage(index)}
-                data-active={index === selectedImage}
-                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-200 ${
-                  index === selectedImage
-                    ? "border-[var(--color-primary)] scale-105 ring-2 ring-[var(--color-primary)]/30"
-                    : "border-transparent hover:border-gray-300"
-                }`}
-              >
-                <img src={image.url} alt={image.altText || `${product.name} ${index + 1}`} className="h-full w-full object-cover" />
-                {image.source === "attribute" && (
-                  <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[9px] px-1 rounded leading-tight">
-                    {image.optionValue}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+    <>
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <nav className="py-3 sm:py-4 text-sm text-gray-500">
+          <Link href="/products" className="hover:text-[var(--color-primary)] transition-colors">Catálogo</Link>
+          <span className="mx-2">/</span>
+          <Link href={`/products?category=${product.category.name.toLowerCase()}`} className="hover:text-[var(--color-primary)] transition-colors">{product.category.name}</Link>
+          <span className="mx-2">/</span>
+          <span className="text-gray-900 font-medium">{product.name}</span>
+        </nav>
 
-      <section>
-        <Link href="/products" className="text-sm text-[var(--color-primary)]">← Volver al catálogo</Link>
-        <p className="mt-5 text-sm text-gray-500">{product.category.name}</p>
-        <h1 className="mt-1 text-3xl font-bold text-gray-900">{product.name}</h1>
-        <p className="mt-1 text-sm text-gray-500">Venta por {UNIT_LABELS[product.unit] || product.unit}</p>
-        <p className="mt-3 leading-relaxed text-gray-600">{product.description}</p>
-
-        {product.details && (
-          <div className="mt-6 rounded-xl bg-gray-50 p-4">
-            <h2 className="font-semibold text-gray-900">Detalles</h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">{product.details}</p>
-          </div>
-        )}
-
-        {product.options.length > 0 && (
-          <div className="mt-7 space-y-5">
-            {product.options.map((option) => (
-              <fieldset key={option.id}>
-                <legend className="mb-2 text-sm font-semibold text-gray-800">{option.name}</legend>
-                <div className="flex flex-wrap gap-2">
-                  {option.values.map((value) => {
-                    const isActive = selection[option.name] === value.value;
-                    const isShowing = isCurrentAttribute(value.imageUrl);
-                    return (
-                      <button
-                        key={value.id}
-                        onClick={() => {
-                          setSelection((current) => ({ ...current, [option.name]: value.value }));
-                          if (value.imageUrl) {
-                            const idx = findImageIndex(value.imageUrl);
-                            if (idx !== -1) setSelectedImage(idx);
-                          }
-                        }}
-                        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-all duration-200 ${
-                          isActive
-                            ? "border-[var(--color-primary)] bg-pink-50 text-[var(--color-primary)] shadow-md shadow-pink-200/50"
-                            : "border-gray-300 text-gray-700 hover:border-gray-400"
-                        } ${isShowing && value.imageUrl ? "animate-[bounce_0.4s_ease-in-out]" : ""}`}
-                      >
-                        {value.imageUrl && (
-                          <img src={value.imageUrl} alt={value.value} className={`h-6 w-6 rounded-full object-cover transition-transform duration-200 ${isShowing ? "scale-110" : ""}`} />
-                        )}
-                        {value.value}
-                      </button>
-                    );
-                  })}
+        <div className="grid gap-6 lg:gap-10 pb-10 lg:grid-cols-[1fr,1fr] lg:items-start">
+          <section className="lg:sticky lg:top-20">
+            <div
+              className="relative overflow-hidden rounded-2xl bg-gray-100 aspect-square touch-pan-y"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {allImages[selectedImage] ? (
+                <img
+                  src={allImages[selectedImage].url}
+                  alt={allImages[selectedImage].altText || product.name}
+                  className="h-full w-full object-cover transition-opacity duration-300"
+                  key={allImages[selectedImage].id}
+                />
+              ) : product.images[0] ? (
+                <img src={product.images[0].url} alt={product.images[0].altText || product.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-gray-400">
+                  <div className="text-center">
+                    <svg className="mx-auto w-12 h-12 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm">Sin imagen</span>
+                  </div>
                 </div>
-              </fieldset>
-            ))}
-          </div>
-        )}
+              )}
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="mt-8 inline-block w-full rounded-xl bg-[var(--color-primary)] py-3 text-center text-white font-semibold hover:opacity-90 transition"
-        >
-          Agregar a mi lista
-        </button>
-      </section>
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setSelectedImage((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
+                    className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2.5 shadow-lg transition-all hover:scale-110 sm:opacity-0 sm:group-hover:opacity-100"
+                    aria-label="Imagen anterior"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setSelectedImage((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2.5 shadow-lg transition-all hover:scale-110 sm:opacity-0 sm:group-hover:opacity-100"
+                    aria-label="Siguiente imagen"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
+                    {allImages.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedImage(i)}
+                        className={`w-1.5 h-1.5 rounded-full transition-all ${i === selectedImage ? "bg-white w-4" : "bg-white/50"}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {allImages[selectedImage]?.source === "attribute" && (
+                <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-medium">
+                  {allImages[selectedImage].optionName}: {allImages[selectedImage].optionValue}
+                </span>
+              )}
+            </div>
+
+            {allImages.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide" ref={thumbStripRef}>
+                {allImages.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => setSelectedImage(index)}
+                    data-active={index === selectedImage}
+                    className={`relative h-14 w-14 sm:h-16 sm:w-16 lg:h-18 lg:w-18 shrink-0 overflow-hidden rounded-xl border-2 transition-all duration-200 ${
+                      index === selectedImage
+                        ? "border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-md"
+                        : "border-transparent opacity-60 hover:opacity-100 hover:border-gray-300"
+                    }`}
+                  >
+                    <img src={image.url} alt={image.altText || `${product.name} ${index + 1}`} className="h-full w-full object-cover" />
+                    {image.source === "attribute" && (
+                      <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[8px] px-1 rounded leading-tight">
+                        {image.optionValue}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="space-y-6">
+            <div>
+              <span className="inline-block rounded-full bg-pink-50 px-3 py-1 text-xs font-medium text-[var(--color-primary)] mb-3">{product.category.name}</span>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">{product.name}</h1>
+              <div className="mt-2 flex items-center gap-3 text-sm text-gray-500">
+                <span className="flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                  Venta por {UNIT_LABELS[product.unit] || product.unit}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
+              <div className="flex border-b border-gray-100 mb-4">
+                <button
+                  onClick={() => setActiveTab("desc")}
+                  className={`pb-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === "desc" ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                >
+                  Descripción
+                </button>
+                {product.details && (
+                  <button
+                    onClick={() => setActiveTab("det")}
+                    className={`pb-2.5 ml-6 text-sm font-medium border-b-2 transition-colors ${activeTab === "det" ? "border-[var(--color-primary)] text-[var(--color-primary)]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Detalles
+                  </button>
+                )}
+              </div>
+              <div className="text-sm sm:text-base leading-relaxed text-gray-600">
+                {activeTab === "desc" ? product.description : product.details}
+              </div>
+            </div>
+
+            {product.options.length > 0 && (
+              <div className="space-y-5">
+                {product.options.map((option) => (
+                  <div key={option.id}>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2.5">{option.name}</label>
+                    <div className="flex flex-wrap gap-2">
+                      {option.values.map((value) => {
+                        const isActive = selection[option.name] === value.value;
+                        const isShowing = isCurrentAttribute(value.imageUrl);
+                        return (
+                          <button
+                            key={value.id}
+                            onClick={() => {
+                              setSelection((current) => ({ ...current, [option.name]: value.value }));
+                              if (value.imageUrl) {
+                                const idx = findImageIndex(value.imageUrl);
+                                if (idx !== -1) setSelectedImage(idx);
+                              }
+                            }}
+                            className={`flex items-center gap-2.5 rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                              isActive
+                                ? "border-[var(--color-primary)] bg-gradient-to-r from-pink-50 to-rose-50 text-[var(--color-primary)] shadow-md shadow-pink-200/40"
+                                : "border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                          >
+                            {value.imageUrl && (
+                              <img
+                                src={value.imageUrl}
+                                alt={value.value}
+                                className={`h-6 w-6 rounded-lg object-cover transition-transform duration-200 ${isShowing ? "scale-110 ring-2 ring-[var(--color-primary)]" : ""}`}
+                              />
+                            )}
+                            {value.value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowModal(true)}
+              className="w-full rounded-2xl bg-gradient-to-r from-[var(--color-primary)] to-rose-600 py-3.5 sm:py-4 text-center text-white font-semibold text-base shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-200/60 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+            >
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Agregar a mi lista
+              </span>
+            </button>
+
+            <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 p-4 border border-green-100">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-green-800">¿Tienes dudas?</p>
+                <a href="https://wa.me/573113487967" target="_blank" rel="noopener noreferrer" className="text-xs text-green-600 hover:underline">Escríbenos por WhatsApp</a>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
 
       {product && (
         <AddToListModal
@@ -252,6 +342,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
           onClose={() => setShowModal(false)}
         />
       )}
-    </main>
+    </>
   );
 }

@@ -33,7 +33,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
   const [description, setDescription] = useState(product?.description || "");
   const [details, setDetails] = useState(product?.details || "");
   const [unit, setUnit] = useState(product?.unit || "UNIDAD");
-  const [categoryId, setCategoryId] = useState(product?.categoryId || "");
+  const [categoryId, setCategoryId] = useState(product?.category?.id || "");
   const [status, setStatus] = useState<ProductStatus>(product?.status || "DRAFT");
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured || false);
   const [images, setImages] = useState<{ id: string; url: string; altText: string | null }[]>(product?.images || []);
@@ -100,7 +100,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
     setOptions((prev) => prev.map((o, i) => i === optIdx ? { ...o, values: [...o.values, { value: "", imageUrl: null }] } : o));
   };
 
-  const updateOptionValue = (optIdx: number, valIdx: number, newValue: string) => {
+  const updateLocalOptionValue = (optIdx: number, valIdx: number, newValue: string) => {
     setOptions((prev) => prev.map((o, i) => i === optIdx ? { ...o, values: o.values.map((v, j) => j === valIdx ? { ...v, value: newValue } : v) } : o));
   };
 
@@ -288,7 +288,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
             <div className="space-y-2">
               {opt.values.map((val, valIdx) => (
                 <div key={valIdx} className="flex items-center gap-2">
-                  <input value={val.value} onChange={(e) => updateOptionValue(optIdx, valIdx, e.target.value)} className="rounded border px-2 py-1 text-sm" placeholder="Valor" />
+                  <input value={val.value} onChange={(e) => updateLocalOptionValue(optIdx, valIdx, e.target.value)} className="rounded border px-2 py-1 text-sm" placeholder="Valor" />
                   <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
                     📷 Imagen
                     <input

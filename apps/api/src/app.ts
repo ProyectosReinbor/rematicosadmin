@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import { errorHandler } from "./middleware/errorHandler";
 import { authenticateToken } from "./middleware/auth";
+import { logger } from "./utils/logger";
 import simulatorRoutes from "./routes/simulator";
 import paymentRoutes from "./routes/payments";
 import auditRoutes from "./routes/audit";
@@ -19,6 +20,8 @@ import uploadRoutes from "./routes/upload";
 dotenv.config();
 
 const app = express();
+
+app.set("trust proxy", 1);
 
 const allowedOrigins = [
   process.env.WEB_URL,

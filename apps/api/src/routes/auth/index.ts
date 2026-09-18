@@ -75,6 +75,7 @@ router.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
+
     if (!email || !password) {
       return res.status(400).json({
         error: { code: "VALIDATION_ERROR", message: "Email y contraseña son obligatorios" },
@@ -94,6 +95,7 @@ router.post("/login", async (req: Request, res: Response) => {
         error: { code: "UNAUTHORIZED", message: "Correo o contraseña incorrectos" },
       });
     }
+
 
     const tokenPayload = { id: user.id, email: user.email, role: user.role, name: user.name };
     const accessToken = generateToken(tokenPayload);
