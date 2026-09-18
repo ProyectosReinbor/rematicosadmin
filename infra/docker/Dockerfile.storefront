@@ -1,24 +1,33 @@
-FROM node:22-alpine AS deps
+FROM node:22-alpine AS base
 WORKDIR /app
+
+# Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci
+COPY apps/storefront/package.json ./apps/storefront/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/shared/package.json ./packages/shared/
+RUN npm ci --workspace=apps/storefront
 
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Build
+COPY apps/storefront ./apps/storefront
+COPY packages/ui ./packages/ui
+COPY packages/shared ./packages/shared
+COPY apps/storefront/next.config.js ./apps/storefront/next.config.js
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN npm run build --workspace=apps/storefront
 
+# Production runner
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/package.json ./package.json
+
+COPY --from=base /app/apps/storefront/public ./public
+COPY --from=base /app/apps/storefront/.next/standalone ./
+COPY --from=base /app/apps/storefront/.next/static ./.next/static
+COPY --from=base /app/apps/storefront/package.json ./package.json
+
 USER nextjs
 EXPOSE 3001
 ENV PORT=3001

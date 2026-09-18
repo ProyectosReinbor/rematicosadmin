@@ -39,7 +39,7 @@ router.post(
       return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "No se enviaron archivos" } });
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const baseUrl = process.env.STORE_URL || `${req.protocol}://${req.get("host")}`;
     const images = files.map((file) => ({
       url: `${baseUrl}/uploads/${file.filename}`,
       altText: req.body.altText || file.originalname,

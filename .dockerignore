@@ -5,4 +5,10 @@ dist
 *.log
 .env
 .env.local
+.env.production
 .prisma
+infra
+.git
+.vscode
+.idea
+coverage
