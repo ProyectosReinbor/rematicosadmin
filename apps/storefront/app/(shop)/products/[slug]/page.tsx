@@ -8,7 +8,7 @@ type ProductImage = { id: string; url: string; altText: string | null };
 type OptionValue = { id: string; value: string };
 type ProductOption = { id: string; name: string; values: OptionValue[] };
 type Product = {
-  id: string; name: string; slug: string; description: string; details: string | null; unit: string; category: { name: string };
+  id: string; name: string; slug: string; description: string; details: string | null; unit: string; category: { name: string; slug: string };
   images: ProductImage[];
   options: ProductOption[];
 };
@@ -18,8 +18,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const UNIT_LABELS: Record<string, string> = {
   UNIDAD: "unidad", METRO: "metro(s)", METRO_CUADRADO: "m²", METRO_LINEAL: "ml",
   KILOGRAMO: "kg", LIBRA: "lb", PAQUETE_1000: "paquete(s)", PAQUETE_500: "paquete(s)",
-  PAQUETE_250: "paquete(s)", PAQUETE_100: "paquete(s)", DOCENA: "docena(s)",
-  PAR: "par(es)", JUEGO: "juego(s)", ROLLO: "rollo(s)", CAJA: "caja(s)",
+  PAQUETE_250: "paquete(s)", PAQUETE_100: "paquete(s)", PAQUETE_10: "paquete(s)",
+  DOCENA: "docena(s)", PAR: "par(es)", JUEGO: "juego(s)", ROLLO: "rollo(s)", CAJA: "caja(s)",
 };
 
 export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -94,7 +94,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         <nav className="py-3 sm:py-5 text-sm text-gray-400 overflow-hidden">
           <Link href="/products" className="hover:text-rose-600 transition-colors">Catálogo</Link>
           <span className="mx-1.5 sm:mx-2">/</span>
-          <Link href={`/products?category=${product.category.name.toLowerCase()}`} className="hover:text-rose-600 transition-colors hidden sm:inline">{product.category.name}</Link>
+          <Link href={`/products?category=${product.category.slug}`} className="hover:text-rose-600 transition-colors hidden sm:inline">{product.category.name}</Link>
           <span className="mx-1.5 sm:mx-2 hidden sm:inline">/</span>
           <span className="text-gray-900 font-medium truncate inline-block max-w-[180px] sm:max-w-none align-bottom">{product.name}</span>
         </nav>

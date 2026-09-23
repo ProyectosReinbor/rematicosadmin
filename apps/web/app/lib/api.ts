@@ -245,6 +245,7 @@ export interface ProductPagination { page: number; limit: number; total: number;
 
 export async function fetchCatalogCategories(): Promise<CatalogCategory[]> { return apiRequest("/api/products/categories"); }
 export async function createCatalogCategory(name: string): Promise<CatalogCategory> { return apiRequest("/api/products/categories", { method: "POST", body: JSON.stringify({ name }) }); }
+export async function updateCatalogCategory(id: string, name: string): Promise<CatalogCategory> { return apiRequest(`/api/products/categories/${id}`, { method: "PUT", body: JSON.stringify({ name }) }); }
 export async function fetchAdminProducts(params?: { page?: number; limit?: number; search?: string; category?: string; status?: string }): Promise<{ data: CatalogProduct[]; pagination: ProductPagination }> {
   const sp = new URLSearchParams();
   if (params?.page) sp.set("page", String(params.page));

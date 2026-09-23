@@ -126,9 +126,26 @@ router.use(authenticateToken, requireRole("ADMIN"));
 
 // Categories
 router.post("/categories", async (req: Request, res: Response) => {
-  const parsed = z.object({ name: z.string().min(2).max(80), slug: z.string().optional() }).safeParse(req.body);
+  const parsed = z.object({ name: z.string().trim().min(2).max(80), slug: z.string().optional() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Categoría inválida", details: parsed.error.errors } });
-  res.status(201).json(await prisma.category.create({ data: { name: parsed.data.name, slug: parsed.data.slug || slugify(parsed.data.name) } }));
+  const name = parsed.data.name;
+  const slug = parsed.data.slug || slugify(name);
+  const existing = await prisma.category.findFirst({ where: { OR: [{ slug }, { name: { equals: name, mode: "insensitive" } }] } });
+  if (existing) return res.status(409).json({ error: { code: "CONFLICT", message: "Ya existe una categoría con ese nombre" } });
+  res.status(201).json(await prisma.category.create({ data: { name, slug } }));
+});
+
+router.put("/categories/:id", async (req: Request, res: Response) => {
+  const parsed = z.object({ name: z.string().trim().min(2).max(80) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Categoría inválida", details: parsed.error.errors } });
+  const category = await prisma.category.findUnique({ where: { id: req.params.id } });
+  if (!category) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Categoría no encontrada" } });
+  const name = parsed.data.name;
+  const duplicate = await prisma.category.findFirst({
+    where: { id: { not: category.id }, OR: [{ slug: slugify(name) }, { name: { equals: name, mode: "insensitive" } }] },
+  });
+  if (duplicate) return res.status(409).json({ error: { code: "CONFLICT", message: "Ya existe una categoría con ese nombre" } });
+  res.json(await prisma.category.update({ where: { id: category.id }, data: { name } }));
 });
 
 // Create product

@@ -39,6 +39,7 @@ const UNIT_OPTIONS = [
   { value: "METRO_LINEAL", label: "Metro lineal" },
   { value: "ROLLO", label: "Rollo" },
   { value: "CAJA", label: "Caja" },
+  { value: "PAQUETE_10", label: "Paquete de 10" },
   { value: "PAQUETE_100", label: "Paquete de 100" },
   { value: "PAQUETE_250", label: "Paquete de 250" },
   { value: "PAQUETE_500", label: "Paquete de 500" },
@@ -179,10 +180,10 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-8 shadow-sm">
-      <div className="flex items-center justify-between">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-gray-100 bg-white p-4 sm:p-6 lg:p-8 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{isEdit ? "Editar producto" : "Nuevo producto"}</h2>
-        <button type="button" onClick={onCancel} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
+        <button type="button" onClick={onCancel} className="self-start rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
       </div>
 
       {error && <div className="rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 flex items-center gap-2"><svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{error}</div>}
@@ -217,10 +218,8 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
         <label className="text-sm font-medium text-gray-700">
           Estado
           <select value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
-            <option value="DRAFT">Borrador</option>
             <option value="PUBLISHED">Publicado</option>
-            <option value="UNAVAILABLE">No disponible</option>
-            <option value="ARCHIVED">Archivado</option>
+            <option value="UNAVAILABLE">Oculto</option>
           </select>
         </label>
         <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">

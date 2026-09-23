@@ -9,21 +9,10 @@ type Product = {
 };
 
 const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: "unidad",
-  METRO: "metro(s)",
-  METRO_CUADRADO: "m²",
-  METRO_LINEAL: "ml",
-  KILOGRAMO: "kg",
-  LIBRA: "lb",
-  PAQUETE_1000: "paquete(s)",
-  PAQUETE_500: "paquete(s)",
-  PAQUETE_250: "paquete(s)",
-  PAQUETE_100: "paquete(s)",
-  DOCENA: "docena(s)",
-  PAR: "par(es)",
-  JUEGO: "juego(s)",
-  ROLLO: "rollo(s)",
-  CAJA: "caja(s)",
+  UNIDAD: "unidad", METRO: "metro(s)", METRO_CUADRADO: "m²", METRO_LINEAL: "ml",
+  KILOGRAMO: "kg", LIBRA: "lb", PAQUETE_1000: "paquete(s)", PAQUETE_500: "paquete(s)",
+  PAQUETE_250: "paquete(s)", PAQUETE_100: "paquete(s)", PAQUETE_10: "paquete(s)",
+  DOCENA: "docena(s)", PAR: "par(es)", JUEGO: "juego(s)", ROLLO: "rollo(s)", CAJA: "caja(s)",
 };
 
 interface AddToListModalProps {

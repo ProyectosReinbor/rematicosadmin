@@ -10,6 +10,7 @@ import {
   deleteProduct,
   fetchAdminProducts,
   fetchCatalogCategories,
+  updateCatalogCategory,
   updateCatalogProduct,
   uploadImages,
   addProductImages,
@@ -34,6 +35,11 @@ export default function ProductsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [showStats, setShowStats] = useState(false);
   const [stats, setStats] = useState<{ total: number; published: number; draft: number } | null>(null);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
 
   const load = useCallback(async (page: number = 1) => {
     try {
@@ -56,13 +62,41 @@ export default function ProductsPage() {
 
   const createCategory = async (event: FormEvent) => {
     event.preventDefault();
-    if (!categoryName.trim()) return;
+    if (!categoryName.trim() || categorySaving) return;
+    setCategorySaving(true);
+    setCategoryError("");
     try {
       const category = await createCatalogCategory(categoryName.trim());
       setCategories((current) => [...current, category]);
       setCategoryName("");
+      setShowNewCategory(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No fue posible crear la categoría");
+      setCategoryError(err instanceof Error ? err.message : "No fue posible crear la categoría");
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
+  const startEditCategory = (cat: CatalogCategory) => {
+    setCategoryError("");
+    setEditingCategoryId(cat.id);
+    setEditingCategoryName(cat.name);
+  };
+
+  const saveCategory = async () => {
+    if (!editingCategoryId || !editingCategoryName.trim() || categorySaving) return;
+    setCategorySaving(true);
+    setCategoryError("");
+    try {
+      const updated = await updateCatalogCategory(editingCategoryId, editingCategoryName.trim());
+      setCategories((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+      setProducts((current) => current.map((p) => (p.category.id === updated.id ? { ...p, category: { ...p.category, name: updated.name } } : p)));
+      setEditingCategoryId(null);
+      setEditingCategoryName("");
+    } catch (err) {
+      setCategoryError(err instanceof Error ? err.message : "No fue posible actualizar la categoría");
+    } finally {
+      setCategorySaving(false);
     }
   };
 
@@ -107,16 +141,12 @@ export default function ProductsPage() {
   const handleSearchKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
 
   const statusBadge = (status: ProductStatus) => {
-    const styles: Record<ProductStatus, string> = {
-      DRAFT: "bg-gray-100 text-gray-600",
-      PUBLISHED: "bg-green-100 text-green-700",
-      UNAVAILABLE: "bg-yellow-100 text-yellow-700",
-      ARCHIVED: "bg-red-100 text-red-600",
-    };
-    const labels: Record<ProductStatus, string> = {
-      DRAFT: "Borrador", PUBLISHED: "Publicado", UNAVAILABLE: "No disponible", ARCHIVED: "Archivado",
-    };
-    return <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}>{labels[status]}</span>;
+    const isPublished = status === "PUBLISHED";
+    return (
+      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+        {isPublished ? "Publicado" : "Oculto"}
+      </span>
+    );
   };
 
   if (mode === "create" || (typeof mode === "object" && mode.type === "edit")) {
@@ -160,29 +190,77 @@ export default function ProductsPage() {
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 appearance-none">
             <option value="">Todos los estados</option>
             <option value="PUBLISHED">Publicados</option>
-            <option value="DRAFT">Borradores</option>
-            <option value="UNAVAILABLE">No disponibles</option>
-            <option value="ARCHIVED">Archivados</option>
+            <option value="UNAVAILABLE">Ocultos</option>
           </select>
           <button onClick={handleSearch} className="rounded-xl bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-100 transition whitespace-nowrap">Buscar</button>
         </div>
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Categorías</h2>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {categories.length === 0 ? (
-            <p className="text-sm text-gray-400">No hay categorías creadas aún.</p>
-          ) : (
-            categories.map((cat) => (
-              <span key={cat.id} className="inline-flex items-center rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-600">{cat.name}</span>
-            ))
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">Categorías</h2>
+          {!showNewCategory && (
+            <button type="button" onClick={() => { setShowNewCategory(true); setCategoryError(""); }} className="rounded-xl bg-rose-50 px-3.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100 transition whitespace-nowrap">
+              + Nueva categoría
+            </button>
           )}
         </div>
-        <form onSubmit={createCategory} className="flex gap-2">
-          <input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} placeholder="Nueva categoría" className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20" />
-          <button className="rounded-xl bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-100 transition whitespace-nowrap">Agregar</button>
-        </form>
+
+        {showNewCategory && (
+          <form onSubmit={createCategory} className="mb-4 space-y-2 rounded-xl border border-rose-100 bg-rose-50/50 p-3 sm:p-4">
+            <p className="text-xs font-semibold text-gray-700">Nueva categoría</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input autoFocus value={categoryName} onChange={(e) => setCategoryName(e.target.value)} placeholder="Nombre" className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition" />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setShowNewCategory(false); setCategoryName(""); setCategoryError(""); }} className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
+                <button type="submit" disabled={categorySaving} className="flex-1 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-rose-200/50 hover:shadow-lg disabled:opacity-50 transition-all whitespace-nowrap">
+                  {categorySaving ? "Creando..." : "Crear categoría"}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        {categoryError && (
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-xs text-red-700">
+            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {categoryError}
+            <button onClick={() => setCategoryError("")} className="ml-auto text-red-400 hover:text-red-600">×</button>
+          </div>
+        )}
+
+        {categories.length === 0 ? (
+          <p className="text-sm text-gray-400">No hay categorías creadas aún.</p>
+        ) : (
+          <div className="space-y-2">
+            {categories.map((cat) => editingCategoryId === cat.id ? (
+              <div key={cat.id} className="space-y-2 rounded-xl border border-rose-100 bg-rose-50/50 p-3">
+                <p className="text-xs font-semibold text-gray-700">Editar categoría</p>
+                <label className="block text-xs font-medium text-gray-600">
+                  Nombre
+                  <input
+                    autoFocus
+                    value={editingCategoryName}
+                    onChange={(e) => setEditingCategoryName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveCategory(); } if (e.key === "Escape") { setEditingCategoryId(null); setEditingCategoryName(""); } }}
+                    className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition"
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => { setEditingCategoryId(null); setEditingCategoryName(""); }} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
+                  <button type="button" onClick={saveCategory} disabled={categorySaving} className="rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-rose-200/50 hover:shadow-lg disabled:opacity-50 transition-all">
+                    {categorySaving ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div key={cat.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5">
+                <span className="truncate text-sm font-medium text-gray-700">{cat.name}</span>
+                <button type="button" onClick={() => startEditCategory(cat)} className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition">Editar</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && <div className="rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 flex items-center gap-2"><svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{error}<button onClick={() => setError("")} className="ml-auto text-red-400 hover:text-red-600">×</button></div>}
@@ -192,7 +270,7 @@ export default function ProductsPage() {
           <div className="space-y-3">
             {[1,2,3,4,5].map((n) => (
               <div key={n} className="animate-pulse rounded-2xl border border-gray-100 bg-white p-4 flex gap-4">
-                <div className="h-32 w-32 bg-gray-100 rounded-xl shrink-0" />
+                <div className="h-24 w-24 sm:h-32 sm:w-32 bg-gray-100 rounded-xl shrink-0" />
                 <div className="flex-1 space-y-3">
                   <div className="h-4 bg-gray-100 rounded-full w-1/3" />
                   <div className="h-3 bg-gray-100 rounded-full w-2/3" />

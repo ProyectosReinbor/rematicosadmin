@@ -34,62 +34,33 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-8" style={{ backgroundColor: "#f9fafb" }}>
-      <div className="w-full max-w-md space-y-8">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold" style={{ color: "#111827" }}>Adornos Rematico</h1>
-          <p className="mt-2" style={{ color: "#4b5563" }}>
-            Inicia sesión para acceder al panel de administración
-          </p>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-white text-xl font-bold shadow-lg shadow-rose-200/50 mb-4">R</div>
+          <h1 className="text-2xl font-bold text-gray-900">Adornos Remático</h1>
+          <p className="mt-2 text-sm text-gray-500">Inicia sesión para acceder al panel de administración</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6 p-8 rounded-lg shadow" style={{ backgroundColor: "#ffffff" }}>
+        <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl bg-white p-6 sm:p-8 shadow-sm border border-gray-100">
           {error && (
-            <div className="rounded-md p-4" style={{ backgroundColor: "#fef2f2" }}>
-              <p className="text-sm" style={{ color: "#991b1b" }}>{error}</p>
+            <div className="rounded-xl bg-red-50 border border-red-100 p-4 text-sm text-red-700 flex items-center gap-2">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              {error}
             </div>
           )}
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium" style={{ color: "#374151" }}>
-              Correo electrónico
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              style={{ borderColor: "#d1d5db", color: "#111827", backgroundColor: "#ffffff" }}
-              placeholder="admin@rematicos.com"
-            />
-          </div>
+          <label className="block text-sm font-medium text-gray-700">
+            Correo electrónico
+            <input id="email" name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@rematicos.com" className="mt-1.5 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition" />
+          </label>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium" style={{ color: "#374151" }}>
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              style={{ borderColor: "#d1d5db", color: "#111827", backgroundColor: "#ffffff" }}
-              placeholder="••••••••"
-            />
-          </div>
+          <label className="block text-sm font-medium text-gray-700">
+            Contraseña
+            <input id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="mt-1.5 block w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition" />
+          </label>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full rounded-md px-4 py-2 font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: "#2563eb" }}
-          >
+          <button type="submit" disabled={isLoading} className="w-full rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-200/50 hover:shadow-xl hover:shadow-rose-200/60 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
             {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
         </form>
