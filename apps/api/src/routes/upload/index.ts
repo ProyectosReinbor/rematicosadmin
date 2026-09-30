@@ -39,9 +39,10 @@ router.post(
       return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "No se enviaron archivos" } });
     }
 
-    const baseUrl = process.env.STORE_URL || `${req.protocol}://${req.get("host")}`;
+    // URL relativa a propósito: cada frontend (admin y tienda) ya proxea
+    // /uploads/* hacia la API, así la imagen funciona en cualquier host/puerto.
     const images = files.map((file) => ({
-      url: `${baseUrl}/uploads/${file.filename}`,
+      url: `/uploads/${file.filename}`,
       altText: req.body.altText || file.originalname,
     }));
 

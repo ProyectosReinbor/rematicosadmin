@@ -6,7 +6,10 @@ import { authenticateToken, requireRole } from "../../middleware/auth";
 const router = Router();
 const prisma = new PrismaClient();
 
-const imageSchema = z.object({ url: z.string().url(), altText: z.string().max(180).optional() });
+// Las imágenes se guardan como rutas relativas ("/uploads/<file>"); se aceptan
+// también URLs absolutas por compatibilidad con registros antiguos.
+const imageUrlSchema = z.string().max(2000).refine((v) => /^https?:\/\//i.test(v) || v.startsWith("/uploads/"), { message: "URL de imagen inválida" });
+const imageSchema = z.object({ url: imageUrlSchema, altText: z.string().max(180).optional() });
 const optionValueSchema = z.object({ value: z.string().min(1).max(60) });
 const optionSchema = z.object({ name: z.string().min(1).max(60), values: z.array(optionValueSchema).min(1) });
 const productSchema = z.object({
@@ -17,7 +20,7 @@ const productSchema = z.object({
   images: z.array(imageSchema).max(12).optional(),
   options: z.array(optionSchema).max(6).optional(),
 });
-const variantSchema = z.object({ reference: z.string().max(80).optional(), attributes: z.record(z.string().min(1).max(80)).default({}), imageUrl: z.string().url().optional(), isAvailable: z.boolean().default(true) });
+const variantSchema = z.object({ reference: z.string().max(80).optional(), attributes: z.record(z.string().min(1).max(80)).default({}), imageUrl: imageUrlSchema.optional(), isAvailable: z.boolean().default(true) });
 
 function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
 
@@ -38,6 +41,12 @@ const productInclude = {
 const productListInclude = {
   category: { select: { id: true, name: true, slug: true } },
   images: { where: { isPrimary: true }, take: 1, orderBy: { sortOrder: "asc" as const } },
+  options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
+};
+
+const adminProductListInclude = {
+  category: { select: { id: true, name: true, slug: true } },
+  images: { orderBy: [{ isPrimary: "desc" as const }, { sortOrder: "asc" as const }] },
   options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
 };
 
@@ -92,7 +101,7 @@ router.get("/admin/list", authenticateToken, requireRole("ADMIN"), async (req: R
   const [products, total] = await Promise.all([
     prisma.product.findMany({
       where,
-      include: productListInclude,
+      include: adminProductListInclude,
       orderBy: { updatedAt: "desc" },
       skip,
       take: limit,
@@ -218,8 +227,13 @@ router.delete("/:id", async (req: Request, res: Response) => {
 router.post("/:id/images", async (req: Request, res: Response) => {
   const parsed = z.object({ images: z.array(imageSchema).min(1).max(12) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Imágenes inválidas", details: parsed.error.errors } });
-  const count = await prisma.productImage.count({ where: { productId: req.params.id } });
-  await prisma.productImage.createMany({ data: parsed.data.images.map((image, index) => ({ productId: req.params.id, ...image, sortOrder: count + index })) });
+  const [count, primaryCount] = await Promise.all([
+    prisma.productImage.count({ where: { productId: req.params.id } }),
+    prisma.productImage.count({ where: { productId: req.params.id, isPrimary: true } }),
+  ]);
+  // Si el producto aún no tiene imagen principal, la primera nueva la es;
+  // de lo contrario el catálogo y el admin la mostrarían como producto sin imagen.
+  await prisma.productImage.createMany({ data: parsed.data.images.map((image, index) => ({ productId: req.params.id, ...image, sortOrder: count + index, isPrimary: primaryCount === 0 && index === 0 })) });
   res.status(201).json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
 });
 
@@ -233,7 +247,14 @@ router.put("/:id/images/reorder", async (req: Request, res: Response) => {
 });
 
 router.delete("/:id/images/:imageId", async (req: Request, res: Response) => {
-  await prisma.productImage.delete({ where: { id: req.params.imageId } });
+  const image = await prisma.productImage.findFirst({ where: { id: req.params.imageId, productId: req.params.id } });
+  if (!image) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Imagen no encontrada" } });
+  await prisma.productImage.delete({ where: { id: image.id } });
+  if (image.isPrimary) {
+    // Promueve la siguiente imagen para que el producto no quede sin portada.
+    const next = await prisma.productImage.findFirst({ where: { productId: image.productId }, orderBy: { sortOrder: "asc" } });
+    if (next) await prisma.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
+  }
   res.status(204).end();
 });
 
