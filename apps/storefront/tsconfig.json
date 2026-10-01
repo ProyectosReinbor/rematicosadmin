@@ -3,21 +3,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@shared/*": [
-        "../../packages/shared/src/*"
-      ],
-      "@ui/*": [
-        "../../packages/ui/src/*"
-      ]
+      "@/*": ["./src/*"],
+      "@shared/*": ["../../packages/shared/src/*"],
+      "@ui/*": ["../../packages/ui/src/*"]
     },
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "incremental": true,
     "jsx": "preserve",
@@ -30,13 +20,10 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "next-env.d.ts",
+    "../../referenciaCatalogoMega.tsx",
     ".next/types/**/*.ts",
-    "../../referenciaCatalogoMega.tsx"
+    "next-env.d.ts",
+    ".next-preview/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    "dist"
-  ]
+  "exclude": ["node_modules", ".next", "dist"]
 }

@@ -16,7 +16,7 @@ export interface CatalogTypeOption {
 }
 
 /** Nombre con el que el administrador registra los tipos de un producto. */
-export const TIPO_OPTION_NAME = "tipo";
+export const TIPO_OPTION_NAME = 'tipo';
 
 /**
  * Las categorías con icono son las definidas en código y se muestran en la
@@ -24,8 +24,12 @@ export const TIPO_OPTION_NAME = "tipo";
  * y se listan en la ventana /categorias.
  */
 export const splitCategories = (categories: CatalogCategory[]) => ({
-  base: categories.filter((c) => !!c.icon),
-  extra: categories.filter((c) => !c.icon),
+  base: categories.filter((c) =>
+    ['confeccion', 'agujas', 'hilos', 'decoracion', 'lanas', 'tijeras'].includes(c.slug),
+  ),
+  extra: categories.filter(
+    (c) => !['confeccion', 'agujas', 'hilos', 'decoracion', 'lanas', 'tijeras'].includes(c.slug),
+  ),
 });
 
 /** Devuelve el atributo "Tipo" del producto, si tiene. */

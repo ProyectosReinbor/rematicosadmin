@@ -1,18 +1,36 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useShoppingList } from "../../lib/shopping-list-context";
+import { quantityStep, normalizeQuantity } from '../../lib/quantity';
+import { useState } from 'react';
+import { useShoppingList } from '../../lib/shopping-list-context';
 
 type Product = {
-  id: string; name: string; slug: string; unit: string; images: { url: string; altText: string | null }[];
+  id: string;
+  name: string;
+  slug: string;
+  unit: string;
+  images: { url: string; altText: string | null }[];
+  type?: { name: string; group: { name: string } } | null;
   options: { id: string; name: string; values: { id: string; value: string }[] }[];
 };
 
 const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: "unidad", METRO: "metro(s)", METRO_CUADRADO: "m²", METRO_LINEAL: "ml",
-  KILOGRAMO: "kg", LIBRA: "lb", PAQUETE_1000: "paquete(s)", PAQUETE_500: "paquete(s)",
-  PAQUETE_250: "paquete(s)", PAQUETE_100: "paquete(s)", PAQUETE_10: "paquete(s)",
-  DOCENA: "docena(s)", PAR: "par(es)", JUEGO: "juego(s)", ROLLO: "rollo(s)", CAJA: "caja(s)",
+  UNIDAD: 'unidad',
+  METRO: 'metro(s)',
+  METRO_CUADRADO: 'm²',
+  METRO_LINEAL: 'ml',
+  KILOGRAMO: 'kg',
+  LIBRA: 'lb',
+  PAQUETE_1000: 'paquete(s) de 1000 unidades',
+  PAQUETE_500: 'paquete(s) de 500 unidades',
+  PAQUETE_250: 'paquete(s) de 250 unidades',
+  PAQUETE_100: 'paquete(s) de 100 unidades',
+  PAQUETE_10: 'paquete(s) de 10 unidades',
+  DOCENA: 'docena(s)',
+  PAR: 'par(es)',
+  JUEGO: 'juego(s)',
+  ROLLO: 'rollo(s)',
+  CAJA: 'caja(s)',
 };
 
 interface AddToListModalProps {
@@ -23,10 +41,14 @@ interface AddToListModalProps {
 
 export default function AddToListModal({ product, isOpen, onClose }: AddToListModalProps) {
   const { addItem } = useShoppingList();
-  const [selection, setSelection] = useState<Record<string, string>>(
-    Object.fromEntries(product.options.map((o) => [o.name, o.values[0]?.value || ""]))
-  );
+  const [selection, setSelection] = useState<Record<string, string>>({
+    ...(product.type ? { Producto: product.type.group.name, Tipo: product.type.name } : {}),
+    ...Object.fromEntries(product.options.map((o) => [o.name, o.values[0]?.value || ''])),
+  });
   const [quantity, setQuantity] = useState(1);
+  const step = quantityStep(product.unit);
+  const minimum = step;
+  const normalize = (value: number) => normalizeQuantity(value, product.unit);
   const [added, setAdded] = useState(false);
 
   if (!isOpen) return null;
@@ -45,20 +67,38 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
       quantity,
     });
     setAdded(true);
-    setTimeout(() => { setAdded(false); onClose(); }, 1200);
+    setTimeout(() => {
+      setAdded(false);
+      onClose();
+    }, 1200);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">Agregar a mi lista</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          >
+            &times;
+          </button>
         </div>
 
         <div className="flex items-center gap-3 mb-5">
           {product.images[0] && (
-            <img src={product.images[0].url} alt={product.name} className="h-16 w-16 rounded-lg object-cover" />
+            <img
+              src={product.images[0].url}
+              alt={product.name}
+              className="h-16 w-16 rounded-lg object-cover"
+            />
           )}
           <div>
             <p className="font-semibold text-gray-900">{product.name}</p>
@@ -77,8 +117,8 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
                     onClick={() => setSelection((c) => ({ ...c, [option.name]: value.value }))}
                     className={`rounded-full border px-3 py-1.5 text-sm transition ${
                       selection[option.name] === value.value
-                        ? "border-[var(--color-primary)] bg-pink-50 text-[var(--color-primary)]"
-                        : "border-gray-300 text-gray-700 hover:border-gray-400"
+                        ? 'border-[var(--color-primary)] bg-pink-50 text-[var(--color-primary)]'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
                     }`}
                   >
                     {value.value}
@@ -89,23 +129,31 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
           ))}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad ({unitLabel})</label>
+            <label
+              htmlFor="requested-quantity"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Cantidad ({unitLabel})
+            </label>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                onClick={() => setQuantity((q) => normalize(q - step))}
                 className="h-9 w-9 rounded-lg border border-gray-300 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
               >
                 -
               </button>
               <input
+                id="requested-quantity"
                 type="number"
-                min={1}
+                min={minimum}
+                step={step}
+                max={999999}
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => setQuantity(normalize(Number(e.target.value) || minimum))}
                 className="h-9 w-20 rounded-lg border border-gray-300 text-center text-sm"
               />
               <button
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((q) => normalize(q + step))}
                 className="h-9 w-9 rounded-lg border border-gray-300 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
               >
                 +
@@ -114,14 +162,28 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
           </div>
         </div>
 
+        <a
+          href={`https://wa.me/573113487967?text=${encodeURIComponent(
+            `Hola Rematico Villavicencio, ¿tienen disponible ${product.name} (${Object.entries(
+              selection,
+            )
+              .map(([key, value]) => key + ': ' + value)
+              .join(', ')})? Necesito ${quantity} ${unitLabel}.`,
+          )}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mb-3 w-full rounded-xl bg-green-700 py-3 text-center text-white font-semibold"
+        >
+          Consultar disponibilidad por WhatsApp
+        </a>
         <button
           onClick={handleAdd}
           disabled={added}
           className={`w-full rounded-xl py-3 text-center text-white font-semibold transition ${
-            added ? "bg-green-500" : "bg-[var(--color-primary)] hover:opacity-90"
+            added ? 'bg-green-500' : 'bg-[var(--color-primary)] hover:opacity-90'
           }`}
         >
-          {added ? "Agregado!" : "Agregar a mi lista"}
+          {added ? 'Agregado!' : 'Agregar a mi lista'}
         </button>
       </div>
     </div>

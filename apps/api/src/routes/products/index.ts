@@ -1,342 +1,737 @@
-import { Router, Request, Response } from "express";
-import { PrismaClient, ProductStatus } from "@prisma/client";
-import { z } from "zod";
-import { authenticateToken, requireRole } from "../../middleware/auth";
-import { TIPO_OPTION_NAME } from "../../config/catalogCategories";
+import { Router, Request, Response, NextFunction } from 'express';
+import { PrismaClient, ProductStatus } from '@prisma/client';
+import { z } from 'zod';
+import { randomUUID } from 'crypto';
+import { authenticateToken, requireRole } from '../../middleware/auth';
+import { TIPO_OPTION_NAME } from '../../config/catalogCategories';
 
 const router = Router();
 const prisma = new PrismaClient();
+const run =
+  (fn: (req: Request, res: Response) => Promise<unknown>) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res)).catch(next);
+  };
+async function validType(typeId: string, categoryId: string) {
+  const type = await prisma.catalogType.findUnique({
+    where: { id: typeId },
+    include: { group: true },
+  });
+  return type?.group.categoryId === categoryId;
+}
 
 // Las imágenes se guardan como rutas relativas ("/uploads/<file>"); se aceptan
 // también URLs absolutas por compatibilidad con registros antiguos.
-const imageUrlSchema = z.string().max(2000).refine((v) => /^https?:\/\//i.test(v) || v.startsWith("/uploads/"), { message: "URL de imagen inválida" });
+const imageUrlSchema = z
+  .string()
+  .max(2000)
+  .refine((v) => /^https?:\/\//i.test(v) || v.startsWith('/uploads/'), {
+    message: 'URL de imagen inválida',
+  });
 const imageSchema = z.object({ url: imageUrlSchema, altText: z.string().max(180).optional() });
 const optionValueSchema = z.object({ value: z.string().min(1).max(60) });
-const optionSchema = z.object({ name: z.string().min(1).max(60), values: z.array(optionValueSchema).min(1) });
+const optionSchema = z.object({
+  name: z.string().min(1).max(60),
+  values: z.array(optionValueSchema).min(1),
+});
 const productSchema = z.object({
-  name: z.string().min(3).max(160), slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
-  description: z.string().min(20).max(2000), details: z.string().max(3000).optional(), categoryId: z.string().uuid(),
-  unit: z.string().max(60).optional(),
-  status: z.nativeEnum(ProductStatus).optional(), isFeatured: z.boolean().optional(),
+  name: z.string().trim().min(3).max(160),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
+  description: z.string().max(2000).default(''),
+  typeId: z.string().uuid().optional(),
+  details: z.string().max(3000).optional(),
+  categoryId: z.string().uuid(),
+  unit: z.string().trim().min(1).max(60).optional(),
+  status: z.nativeEnum(ProductStatus).optional(),
+  isFeatured: z.boolean().optional(),
   images: z.array(imageSchema).max(12).optional(),
   options: z.array(optionSchema).max(6).optional(),
 });
-const variantSchema = z.object({ reference: z.string().max(80).optional(), attributes: z.record(z.string().min(1).max(80)).default({}), imageUrl: imageUrlSchema.optional(), isAvailable: z.boolean().default(true) });
+const variantSchema = z.object({
+  reference: z.string().max(80).optional(),
+  attributes: z.record(z.string().min(1).max(80)).default({}),
+  imageUrl: imageUrlSchema.optional(),
+  isAvailable: z.boolean().default(true),
+});
 
-function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
+function slugify(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
 
-function parsePagination(query: Request["query"]) {
-  const page = Math.max(1, parseInt(String(query.page || "1"), 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(String(query.limit || "24"), 10) || 24));
+function parsePagination(query: Request['query']) {
+  const page = Math.max(1, parseInt(String(query.page || '1'), 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(String(query.limit || '24'), 10) || 24));
   const skip = (page - 1) * limit;
   return { page, limit, skip };
 }
 
 const productInclude = {
   category: true,
-  images: { orderBy: [{ isPrimary: "desc" as const }, { sortOrder: "asc" as const }] },
-  options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
-  variants: { orderBy: { createdAt: "asc" as const } },
+  type: { include: { group: true } },
+  images: { orderBy: [{ isPrimary: 'desc' as const }, { sortOrder: 'asc' as const }] },
+  options: {
+    orderBy: { sortOrder: 'asc' as const },
+    include: { values: { orderBy: { id: 'asc' as const } } },
+  },
+  variants: { orderBy: { createdAt: 'asc' as const } },
 };
 
 const productListInclude = {
   category: { select: { id: true, name: true, slug: true, icon: true } },
-  images: { where: { isPrimary: true }, take: 1, orderBy: { sortOrder: "asc" as const } },
-  options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
+  type: { include: { group: true } },
+  images: { where: { isPrimary: true }, take: 1, orderBy: { sortOrder: 'asc' as const } },
+  options: {
+    orderBy: { sortOrder: 'asc' as const },
+    include: { values: { orderBy: { id: 'asc' as const } } },
+  },
 };
 
 const adminProductListInclude = {
   category: { select: { id: true, name: true, slug: true, icon: true } },
-  images: { orderBy: [{ isPrimary: "desc" as const }, { sortOrder: "asc" as const }] },
-  options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
+  type: { include: { group: true } },
+  images: { orderBy: [{ isPrimary: 'desc' as const }, { sortOrder: 'asc' as const }] },
+  options: {
+    orderBy: { sortOrder: 'asc' as const },
+    include: { values: { orderBy: { id: 'asc' as const } } },
+  },
 };
 
 // ─── Public ────────────────────────────────────────
-router.get("/categories", async (_req: Request, res: Response) => {
-  res.json(await prisma.category.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }));
-});
+router.get(
+  '/categories',
+  run(async (_req: Request, res: Response) => {
+    res.json(
+      await prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      }),
+    );
+  }),
+);
 
 // Tipos disponibles (atributo "Tipo" de los productos publicados). Si se envía
 // `category`, solo devuelve los tipos de esa categoría. Ej. en Confección,
 // Cinta → Agua, Doble razo, Floral, Fusionable, Satinada.
-router.get("/types", async (req: Request, res: Response) => {
-  const category = typeof req.query.category === "string" ? req.query.category : undefined;
-  const productScope = {
-    status: "PUBLISHED" as const,
-    ...(category ? { category: { slug: category } } : {}),
-  };
+router.get(
+  '/types',
+  run(async (req: Request, res: Response) => {
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const productScope = {
+      status: 'PUBLISHED' as const,
+      ...(category
+        ? { category: { slug: category, isActive: true } }
+        : { category: { isActive: true } }),
+      ...(typeof req.query.typeId === 'string' ? { typeId: req.query.typeId } : {}),
+      ...(typeof req.query.groupId === 'string' ? { type: { groupId: req.query.groupId } } : {}),
+    };
 
-  const values = await prisma.optionValue.findMany({
-    where: {
-      option: { name: { equals: TIPO_OPTION_NAME, mode: "insensitive" as const }, product: productScope },
-    },
-    orderBy: { value: "asc" },
-    select: { value: true },
-  });
+    const values = await prisma.optionValue.findMany({
+      where: {
+        option: {
+          name: { equals: TIPO_OPTION_NAME, mode: 'insensitive' as const },
+          product: productScope,
+        },
+      },
+      orderBy: { value: 'asc' },
+      select: { value: true },
+    });
 
-  res.json(Array.from(new Set(values.map((v) => v.value))));
-});
+    res.json(Array.from(new Set(values.map((v) => v.value))));
+  }),
+);
 
-router.get("/", async (req: Request, res: Response) => {
-  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-  const category = typeof req.query.category === "string" ? req.query.category : undefined;
-  const option = typeof req.query.option === "string" ? req.query.option.trim() : "";
-  const optionValue = typeof req.query.optionValue === "string" ? req.query.optionValue.trim() : "";
-  const { page, limit, skip } = parsePagination(req.query);
+router.get(
+  '/',
+  run(async (req: Request, res: Response) => {
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const option = typeof req.query.option === 'string' ? req.query.option.trim() : '';
+    const optionValue =
+      typeof req.query.optionValue === 'string' ? req.query.optionValue.trim() : '';
+    const { page, limit, skip } = parsePagination(req.query);
 
-  const where = {
-    status: "PUBLISHED" as const,
-    ...(category ? { category: { slug: category } } : {}),
-    ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { description: { contains: search, mode: "insensitive" as const } }] } : {}),
-    ...(option && optionValue ? { options: { some: { name: { equals: option, mode: "insensitive" as const }, values: { some: { value: { equals: optionValue, mode: "insensitive" as const } } } } } } : {}),
-  };
+    const where = {
+      status: 'PUBLISHED' as const,
+      ...(category
+        ? { category: { slug: category, isActive: true } }
+        : { category: { isActive: true } }),
+      ...(typeof req.query.typeId === 'string' ? { typeId: req.query.typeId } : {}),
+      ...(typeof req.query.groupId === 'string' ? { type: { groupId: req.query.groupId } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { description: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+      ...(option && optionValue
+        ? {
+            options: {
+              some: {
+                name: { equals: option, mode: 'insensitive' as const },
+                values: { some: { value: { equals: optionValue, mode: 'insensitive' as const } } },
+              },
+            },
+          }
+        : {}),
+    };
 
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: productListInclude,
-      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-      skip,
-      take: limit,
-    }),
-    prisma.product.count({ where }),
-  ]);
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: productListInclude,
+        orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
 
-  res.json({
-    data: products,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-  });
-});
+    res.json({
+      data: products,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  }),
+);
 
-router.get("/admin/list", authenticateToken, requireRole("ADMIN"), async (req: Request, res: Response) => {
-  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-  const category = typeof req.query.category === "string" ? req.query.category : undefined;
-  const status = typeof req.query.status === "string" ? req.query.status : undefined;
-  const { page, limit, skip } = parsePagination(req.query);
+router.get(
+  '/admin/list',
+  authenticateToken,
+  requireRole('ADMIN'),
+  run(async (req: Request, res: Response) => {
+    const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const { page, limit, skip } = parsePagination(req.query);
 
-  const where = {
-    ...(category ? { category: { slug: category } } : {}),
-    ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" as const } }, { description: { contains: search, mode: "insensitive" as const } }] } : {}),
-    ...(status && ["DRAFT", "PUBLISHED", "UNAVAILABLE", "ARCHIVED"].includes(status) ? { status: status as ProductStatus } : {}),
-  };
+    const where = {
+      ...(category
+        ? { category: { slug: category, isActive: true } }
+        : { category: { isActive: true } }),
+      ...(typeof req.query.typeId === 'string' ? { typeId: req.query.typeId } : {}),
+      ...(typeof req.query.groupId === 'string' ? { type: { groupId: req.query.groupId } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { description: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+      ...(status && ['DRAFT', 'PUBLISHED', 'UNAVAILABLE', 'ARCHIVED'].includes(status)
+        ? { status: status as ProductStatus }
+        : {}),
+    };
 
-  const [products, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: adminProductListInclude,
-      orderBy: { updatedAt: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.product.count({ where }),
-  ]);
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: adminProductListInclude,
+        orderBy: { updatedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
 
-  res.json({
-    data: products,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-  });
-});
+    res.json({
+      data: products,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  }),
+);
 
-router.get("/admin/count", authenticateToken, requireRole("ADMIN"), async (_req: Request, res: Response) => {
-  const [total, published, draft] = await Promise.all([
-    prisma.product.count(),
-    prisma.product.count({ where: { status: "PUBLISHED" } }),
-    prisma.product.count({ where: { status: "DRAFT" } }),
-  ]);
-  res.json({ total, published, draft });
-});
+router.get(
+  '/admin/count',
+  authenticateToken,
+  requireRole('ADMIN'),
+  run(async (_req: Request, res: Response) => {
+    const [total, published, draft] = await Promise.all([
+      prisma.product.count(),
+      prisma.product.count({ where: { status: 'PUBLISHED' } }),
+      prisma.product.count({ where: { status: 'DRAFT' } }),
+    ]);
+    res.json({ total, published, draft });
+  }),
+);
 
-router.get("/:slug", async (req: Request, res: Response) => {
-  const product = await prisma.product.findFirst({ where: { slug: req.params.slug, status: "PUBLISHED" }, include: productInclude });
-  if (!product) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Producto no encontrado" } });
-  res.json(product);
-});
+router.get(
+  '/:slug',
+  run(async (req: Request, res: Response) => {
+    const product = await prisma.product.findFirst({
+      where: { slug: req.params.slug, status: 'PUBLISHED', category: { isActive: true } },
+      include: productInclude,
+    });
+    if (!product)
+      return res
+        .status(404)
+        .json({ error: { code: 'NOT_FOUND', message: 'Producto no encontrado' } });
+    res.json(product);
+  }),
+);
 
 // ─── Admin ─────────────────────────────────────────
-router.use(authenticateToken, requireRole("ADMIN"));
+router.use(authenticateToken, requireRole('ADMIN'));
 
 // Categories
-router.post("/categories", async (req: Request, res: Response) => {
-  const parsed = z.object({ name: z.string().trim().min(2).max(80), slug: z.string().optional() }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Categoría inválida", details: parsed.error.errors } });
-  const name = parsed.data.name;
-  const slug = parsed.data.slug || slugify(name);
-  const existing = await prisma.category.findFirst({ where: { OR: [{ slug }, { name: { equals: name, mode: "insensitive" } }] } });
-  if (existing) return res.status(409).json({ error: { code: "CONFLICT", message: "Ya existe una categoría con ese nombre" } });
-  res.status(201).json(await prisma.category.create({ data: { name, slug } }));
-});
+router.post(
+  '/categories',
+  run(async (req: Request, res: Response) => {
+    const parsed = z
+      .object({ name: z.string().trim().min(2).max(80), slug: z.string().optional() })
+      .safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Categoría inválida',
+            details: parsed.error.errors,
+          },
+        });
+    const name = parsed.data.name;
+    const slug = parsed.data.slug || slugify(name);
+    const existing = await prisma.category.findFirst({
+      where: { OR: [{ slug }, { name: { equals: name, mode: 'insensitive' } }] },
+    });
+    if (existing)
+      return res
+        .status(409)
+        .json({ error: { code: 'CONFLICT', message: 'Ya existe una categoría con ese nombre' } });
+    res.status(201).json(await prisma.category.create({ data: { name, slug } }));
+  }),
+);
 
-router.put("/categories/:id", async (req: Request, res: Response) => {
-  const parsed = z.object({ name: z.string().trim().min(2).max(80) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Categoría inválida", details: parsed.error.errors } });
-  const category = await prisma.category.findUnique({ where: { id: req.params.id } });
-  if (!category) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Categoría no encontrada" } });
-  const name = parsed.data.name;
-  const duplicate = await prisma.category.findFirst({
-    where: { id: { not: category.id }, OR: [{ slug: slugify(name) }, { name: { equals: name, mode: "insensitive" } }] },
-  });
-  if (duplicate) return res.status(409).json({ error: { code: "CONFLICT", message: "Ya existe una categoría con ese nombre" } });
-  res.json(await prisma.category.update({ where: { id: category.id }, data: { name } }));
-});
+router.put(
+  '/categories/:id',
+  run(async (req: Request, res: Response) => {
+    const parsed = z.object({ name: z.string().trim().min(2).max(80) }).safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Categoría inválida',
+            details: parsed.error.errors,
+          },
+        });
+    const category = await prisma.category.findUnique({ where: { id: req.params.id } });
+    if (!category)
+      return res
+        .status(404)
+        .json({ error: { code: 'NOT_FOUND', message: 'Categoría no encontrada' } });
+    const name = parsed.data.name;
+    const duplicate = await prisma.category.findFirst({
+      where: {
+        id: { not: category.id },
+        OR: [{ slug: slugify(name) }, { name: { equals: name, mode: 'insensitive' } }],
+      },
+    });
+    if (duplicate)
+      return res
+        .status(409)
+        .json({ error: { code: 'CONFLICT', message: 'Ya existe una categoría con ese nombre' } });
+    res.json(await prisma.category.update({ where: { id: category.id }, data: { name } }));
+  }),
+);
 
 // Create product
-router.post("/", async (req: Request, res: Response) => {
-  const parsed = productSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Datos de producto inválidos", details: parsed.error.errors } });
-  const data = parsed.data;
-  const product = await prisma.product.create({
-    data: {
-      name: data.name, slug: data.slug || slugify(data.name), description: data.description,
-      details: data.details, unit: data.unit || "UNIDAD", categoryId: data.categoryId, status: data.status || "DRAFT", isFeatured: data.isFeatured || false,
-      images: data.images ? { create: data.images.map((image, index) => ({ ...image, sortOrder: index, isPrimary: index === 0 })) } : undefined,
-      options: data.options ? { create: data.options.map((option, index) => ({
-        name: option.name, sortOrder: index,
-        values: { create: option.values.map((v) => ({ value: v.value })) },
-      })) } : undefined,
-    },
-    include: productInclude,
-  });
-  res.status(201).json(product);
-});
+router.post(
+  '/',
+  run(async (req: Request, res: Response) => {
+    const parsed = productSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Datos de producto inválidos',
+            details: parsed.error.errors,
+          },
+        });
+    const data = parsed.data;
+    if (data.typeId && !(await validType(data.typeId, data.categoryId)))
+      return res
+        .status(400)
+        .json({ error: { message: 'El tipo no pertenece a la categoría seleccionada' } });
+    if (data.typeId && !data.images?.length)
+      return res.status(400).json({ error: { message: 'Sube una imagen para la tarjeta' } });
+    const product = await prisma.product.create({
+      data: {
+        name: data.name,
+        slug: data.slug || `${slugify(data.name)}-${randomUUID().slice(0, 8)}`,
+        description: data.description,
+        typeId: data.typeId,
+        details: data.details,
+        unit: data.unit || 'UNIDAD',
+        categoryId: data.categoryId,
+        status: data.status || 'DRAFT',
+        isFeatured: data.isFeatured || false,
+        images: data.images
+          ? {
+              create: data.images.map((image, index) => ({
+                ...image,
+                sortOrder: index,
+                isPrimary: index === 0,
+              })),
+            }
+          : undefined,
+        options: data.options
+          ? {
+              create: data.options.map((option, index) => ({
+                name: option.name,
+                sortOrder: index,
+                values: { create: option.values.map((v) => ({ value: v.value })) },
+              })),
+            }
+          : undefined,
+      },
+      include: productInclude,
+    });
+    res.status(201).json(product);
+  }),
+);
 
 // Full update product
-router.put("/:id", async (req: Request, res: Response) => {
-  const parsed = z.object({
-    name: z.string().min(3).max(160).optional(),
-    description: z.string().min(20).max(2000).optional(),
-    details: z.string().max(3000).optional().nullable(),
-    unit: z.string().max(60).optional(),
-    categoryId: z.string().uuid().optional(),
-    status: z.nativeEnum(ProductStatus).optional(),
-    isFeatured: z.boolean().optional(),
-  }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Datos inválidos", details: parsed.error.errors } });
-  const data = parsed.data;
-  const updateData: Record<string, unknown> = {};
-  if (data.name !== undefined) { updateData.name = data.name; updateData.slug = slugify(data.name); }
-  if (data.description !== undefined) updateData.description = data.description;
-  if (data.details !== undefined) updateData.details = data.details;
-  if (data.unit !== undefined) updateData.unit = data.unit;
-  if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-  if (data.status !== undefined) updateData.status = data.status;
-  if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
-  res.json(await prisma.product.update({ where: { id: req.params.id }, data: updateData, include: productInclude }));
-});
+router.put(
+  '/:id',
+  run(async (req: Request, res: Response) => {
+    const parsed = z
+      .object({
+        name: z.string().trim().min(3).max(160).optional(),
+        description: z.string().max(2000).optional(),
+        typeId: z.string().uuid().optional().nullable(),
+        images: z.array(imageSchema).min(1).max(12).optional(),
+        details: z.string().max(3000).optional().nullable(),
+        unit: z.string().trim().min(1).max(60).optional(),
+        categoryId: z.string().uuid().optional(),
+        status: z.nativeEnum(ProductStatus).optional(),
+        isFeatured: z.boolean().optional(),
+      })
+      .safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Datos inválidos',
+            details: parsed.error.errors,
+          },
+        });
+    const data = parsed.data;
+    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: { message: 'Tarjeta no encontrada' } });
+    const finalType = data.typeId !== undefined ? data.typeId : existing.typeId;
+    if (finalType && !(await validType(finalType, data.categoryId || existing.categoryId)))
+      return res
+        .status(400)
+        .json({ error: { message: 'El tipo no pertenece a la categoría seleccionada' } });
+    const updateData: Record<string, unknown> = {};
+    if (data.typeId !== undefined) updateData.typeId = data.typeId;
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+    }
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.details !== undefined) updateData.details = data.details;
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
+    if (data.images !== undefined)
+      updateData.images = {
+        deleteMany: {},
+        create: data.images.map((image, index) => ({
+          ...image,
+          sortOrder: index,
+          isPrimary: index === 0,
+        })),
+      };
+    res.json(
+      await prisma.product.update({
+        where: { id: req.params.id },
+        data: updateData,
+        include: productInclude,
+      }),
+    );
+  }),
+);
 
 // Legacy PATCH (backward compat)
-router.patch("/:id", async (req: Request, res: Response) => {
-  const parsed = productSchema.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Datos de producto inválidos", details: parsed.error.errors } });
-  const { images: _images, options: _options, ...data } = parsed.data;
-  const updateData: Record<string, unknown> = {};
-  if (data.name !== undefined) { updateData.name = data.name; updateData.slug = slugify(data.name); }
-  if (data.description !== undefined) updateData.description = data.description;
-  if (data.details !== undefined) updateData.details = data.details;
-  if (data.unit !== undefined) updateData.unit = data.unit;
-  if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
-  if (data.status !== undefined) updateData.status = data.status;
-  if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
-  res.json(await prisma.product.update({ where: { id: req.params.id }, data: updateData, include: productInclude }));
-});
+router.patch(
+  '/:id',
+  run(async (req: Request, res: Response) => {
+    const parsed = productSchema.partial().safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Datos de producto inválidos',
+            details: parsed.error.errors,
+          },
+        });
+    const { images: _images, options: _options, ...data } = parsed.data;
+    const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: { message: 'Tarjeta no encontrada' } });
+    const finalType = data.typeId !== undefined ? data.typeId : existing.typeId;
+    if (finalType && !(await validType(finalType, data.categoryId || existing.categoryId)))
+      return res
+        .status(400)
+        .json({ error: { message: 'El tipo no pertenece a la categoría seleccionada' } });
+    const updateData: Record<string, unknown> = {};
+    if (data.typeId !== undefined) updateData.typeId = data.typeId;
+    if (data.name !== undefined) {
+      updateData.name = data.name;
+    }
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.details !== undefined) updateData.details = data.details;
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
+    res.json(
+      await prisma.product.update({
+        where: { id: req.params.id },
+        data: updateData,
+        include: productInclude,
+      }),
+    );
+  }),
+);
 
 // Delete product
-router.delete("/:id", async (req: Request, res: Response) => {
-  await prisma.product.delete({ where: { id: req.params.id } });
-  res.status(204).end();
-});
+router.delete(
+  '/:id',
+  run(async (req: Request, res: Response) => {
+    await prisma.product.delete({ where: { id: req.params.id } });
+    res.status(204).end();
+  }),
+);
 
 // ─── Images ────────────────────────────────────────
-router.post("/:id/images", async (req: Request, res: Response) => {
-  const parsed = z.object({ images: z.array(imageSchema).min(1).max(12) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Imágenes inválidas", details: parsed.error.errors } });
-  const [count, primaryCount] = await Promise.all([
-    prisma.productImage.count({ where: { productId: req.params.id } }),
-    prisma.productImage.count({ where: { productId: req.params.id, isPrimary: true } }),
-  ]);
-  // Si el producto aún no tiene imagen principal, la primera nueva la es;
-  // de lo contrario el catálogo y el admin la mostrarían como producto sin imagen.
-  await prisma.productImage.createMany({ data: parsed.data.images.map((image, index) => ({ productId: req.params.id, ...image, sortOrder: count + index, isPrimary: primaryCount === 0 && index === 0 })) });
-  res.status(201).json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
-});
+router.post(
+  '/:id/images',
+  run(async (req: Request, res: Response) => {
+    const parsed = z.object({ images: z.array(imageSchema).min(1).max(12) }).safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Imágenes inválidas',
+            details: parsed.error.errors,
+          },
+        });
+    const [count, primaryCount] = await Promise.all([
+      prisma.productImage.count({ where: { productId: req.params.id } }),
+      prisma.productImage.count({ where: { productId: req.params.id, isPrimary: true } }),
+    ]);
+    // Si el producto aún no tiene imagen principal, la primera nueva la es;
+    // de lo contrario el catálogo y el admin la mostrarían como producto sin imagen.
+    await prisma.productImage.createMany({
+      data: parsed.data.images.map((image, index) => ({
+        productId: req.params.id,
+        ...image,
+        sortOrder: count + index,
+        isPrimary: primaryCount === 0 && index === 0,
+      })),
+    });
+    res
+      .status(201)
+      .json(
+        await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }),
+      );
+  }),
+);
 
-router.put("/:id/images/reorder", async (req: Request, res: Response) => {
-  const parsed = z.object({ imageIds: z.array(z.string().uuid()).min(1) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Orden inválido" } });
-  await prisma.$transaction(parsed.data.imageIds.map((imageId, index) =>
-    prisma.productImage.update({ where: { id: imageId }, data: { sortOrder: index, isPrimary: index === 0 } })
-  ));
-  res.json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
-});
+router.put(
+  '/:id/images/reorder',
+  run(async (req: Request, res: Response) => {
+    const parsed = z.object({ imageIds: z.array(z.string().uuid()).min(1) }).safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'Orden inválido' } });
+    await prisma.$transaction(
+      parsed.data.imageIds.map((imageId, index) =>
+        prisma.productImage.update({
+          where: { id: imageId },
+          data: { sortOrder: index, isPrimary: index === 0 },
+        }),
+      ),
+    );
+    res.json(
+      await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }),
+    );
+  }),
+);
 
-router.delete("/:id/images/:imageId", async (req: Request, res: Response) => {
-  const image = await prisma.productImage.findFirst({ where: { id: req.params.imageId, productId: req.params.id } });
-  if (!image) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Imagen no encontrada" } });
-  await prisma.productImage.delete({ where: { id: image.id } });
-  if (image.isPrimary) {
-    // Promueve la siguiente imagen para que el producto no quede sin portada.
-    const next = await prisma.productImage.findFirst({ where: { productId: image.productId }, orderBy: { sortOrder: "asc" } });
-    if (next) await prisma.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
-  }
-  res.status(204).end();
-});
+router.delete(
+  '/:id/images/:imageId',
+  run(async (req: Request, res: Response) => {
+    const image = await prisma.productImage.findFirst({
+      where: { id: req.params.imageId, productId: req.params.id },
+    });
+    if (!image)
+      return res
+        .status(404)
+        .json({ error: { code: 'NOT_FOUND', message: 'Imagen no encontrada' } });
+    await prisma.productImage.delete({ where: { id: image.id } });
+    if (image.isPrimary) {
+      // Promueve la siguiente imagen para que el producto no quede sin portada.
+      const next = await prisma.productImage.findFirst({
+        where: { productId: image.productId },
+        orderBy: { sortOrder: 'asc' },
+      });
+      if (next)
+        await prisma.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
+    }
+    res.status(204).end();
+  }),
+);
 
 // ─── Options ───────────────────────────────────────
-router.post("/:id/options", async (req: Request, res: Response) => {
-  const parsed = z.object({ name: z.string().min(1).max(60), values: z.array(optionValueSchema).min(1) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Atributo inválido", details: parsed.error.errors } });
-  const count = await prisma.productOption.count({ where: { productId: req.params.id } });
-  await prisma.productOption.create({
-    data: {
-      productId: req.params.id, name: parsed.data.name, sortOrder: count,
-      values: { create: parsed.data.values.map((v) => ({ value: v.value })) },
-    },
-  });
-  res.status(201).json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
-});
+router.post(
+  '/:id/options',
+  run(async (req: Request, res: Response) => {
+    const parsed = z
+      .object({ name: z.string().min(1).max(60), values: z.array(optionValueSchema).min(1) })
+      .safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Atributo inválido',
+            details: parsed.error.errors,
+          },
+        });
+    const count = await prisma.productOption.count({ where: { productId: req.params.id } });
+    await prisma.productOption.create({
+      data: {
+        productId: req.params.id,
+        name: parsed.data.name,
+        sortOrder: count,
+        values: { create: parsed.data.values.map((v) => ({ value: v.value })) },
+      },
+    });
+    res
+      .status(201)
+      .json(
+        await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }),
+      );
+  }),
+);
 
-router.put("/:id/options/:optionId", async (req: Request, res: Response) => {
-  const parsed = z.object({ name: z.string().min(1).max(60).optional() }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Atributo inválido" } });
-  await prisma.productOption.update({ where: { id: req.params.optionId }, data: parsed.data });
-  res.json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
-});
+router.put(
+  '/:id/options/:optionId',
+  run(async (req: Request, res: Response) => {
+    const parsed = z.object({ name: z.string().min(1).max(60).optional() }).safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'Atributo inválido' } });
+    await prisma.productOption.update({ where: { id: req.params.optionId }, data: parsed.data });
+    res.json(
+      await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }),
+    );
+  }),
+);
 
-router.delete("/:id/options/:optionId", async (req: Request, res: Response) => {
-  await prisma.productOption.delete({ where: { id: req.params.optionId } });
-  res.status(204).end();
-});
+router.delete(
+  '/:id/options/:optionId',
+  run(async (req: Request, res: Response) => {
+    await prisma.productOption.delete({ where: { id: req.params.optionId } });
+    res.status(204).end();
+  }),
+);
 
 // Option values
-router.put("/:id/options/:optionId/values/:valueId", async (req: Request, res: Response) => {
-  const parsed = z.object({ value: z.string().min(1).max(60).optional() }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Valor inválido" } });
-  await prisma.optionValue.update({ where: { id: req.params.valueId }, data: parsed.data });
-  res.json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
-});
+router.put(
+  '/:id/options/:optionId/values/:valueId',
+  run(async (req: Request, res: Response) => {
+    const parsed = z.object({ value: z.string().min(1).max(60).optional() }).safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'Valor inválido' } });
+    await prisma.optionValue.update({ where: { id: req.params.valueId }, data: parsed.data });
+    res.json(
+      await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }),
+    );
+  }),
+);
 
-router.post("/:id/options/:optionId/values", async (req: Request, res: Response) => {
-  const parsed = z.object({ value: z.string().min(1).max(60) }).safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Valor inválido" } });
-  await prisma.optionValue.create({ data: { optionId: req.params.optionId, value: parsed.data.value } });
-  res.json(await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }));
-});
+router.post(
+  '/:id/options/:optionId/values',
+  run(async (req: Request, res: Response) => {
+    const parsed = z.object({ value: z.string().min(1).max(60) }).safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'Valor inválido' } });
+    await prisma.optionValue.create({
+      data: { optionId: req.params.optionId, value: parsed.data.value },
+    });
+    res.json(
+      await prisma.product.findUnique({ where: { id: req.params.id }, include: productInclude }),
+    );
+  }),
+);
 
-router.delete("/:id/options/:optionId/values/:valueId", async (req: Request, res: Response) => {
-  await prisma.optionValue.delete({ where: { id: req.params.valueId } });
-  res.status(204).end();
-});
+router.delete(
+  '/:id/options/:optionId/values/:valueId',
+  run(async (req: Request, res: Response) => {
+    await prisma.optionValue.delete({ where: { id: req.params.valueId } });
+    res.status(204).end();
+  }),
+);
 
 // ─── Variants ──────────────────────────────────────
-router.post("/:id/variants", async (req: Request, res: Response) => {
-  const parsed = variantSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Variante inválida", details: parsed.error.errors } });
-  const variant = await prisma.productVariant.create({ data: { productId: req.params.id, ...parsed.data } });
-  res.status(201).json(variant);
-});
+router.post(
+  '/:id/variants',
+  run(async (req: Request, res: Response) => {
+    const parsed = variantSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Variante inválida',
+            details: parsed.error.errors,
+          },
+        });
+    const variant = await prisma.productVariant.create({
+      data: { productId: req.params.id, ...parsed.data },
+    });
+    res.status(201).json(variant);
+  }),
+);
 
-router.delete("/:id/variants/:variantId", async (req: Request, res: Response) => {
-  await prisma.productVariant.delete({ where: { id: req.params.variantId } });
-  res.status(204).end();
-});
+router.delete(
+  '/:id/variants/:variantId',
+  run(async (req: Request, res: Response) => {
+    await prisma.productVariant.delete({ where: { id: req.params.variantId } });
+    res.status(204).end();
+  }),
+);
 
 export default router;

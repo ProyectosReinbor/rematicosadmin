@@ -1,47 +1,53 @@
-import express from "express";
-import path from "path";
-import helmet from "helmet";
-import cors from "cors";
-import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
-import { errorHandler } from "./middleware/errorHandler";
-import { authenticateToken } from "./middleware/auth";
-import { logger } from "./utils/logger";
-import simulatorRoutes from "./routes/simulator";
-import paymentRoutes from "./routes/payments";
-import auditRoutes from "./routes/audit";
-import settingsRoutes from "./routes/settings";
-import publicidadRoutes from "./modules/publicidad/routes";
-import authRoutes from "./routes/auth";
-import verificationRoutes from "./routes/verifications";
-import productRoutes from "./routes/products";
-import uploadRoutes from "./routes/upload";
+import express from 'express';
+import path from 'path';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { errorHandler } from './middleware/errorHandler';
+import { authenticateToken } from './middleware/auth';
+import { logger } from './utils/logger';
+import simulatorRoutes from './routes/simulator';
+import paymentRoutes from './routes/payments';
+import auditRoutes from './routes/audit';
+import settingsRoutes from './routes/settings';
+import publicidadRoutes from './modules/publicidad/routes';
+import authRoutes from './routes/auth';
+import verificationRoutes from './routes/verifications';
+import productRoutes from './routes/products';
+import catalogRoutes from './routes/catalog';
+import uploadRoutes from './routes/upload';
 
 dotenv.config();
 
 const app = express();
 
-app.set("trust proxy", 1);
+app.set('trust proxy', 1);
 
 const allowedOrigins = [
   process.env.WEB_URL,
   process.env.STORE_URL,
-  "http://localhost:3000",
-  "http://localhost:3001",
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.NODE_ENV !== 'production'
+    ? ['http://localhost:3100', 'http://localhost:3101']
+    : []),
 ].filter(Boolean) as string[];
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
-app.use(express.json({ limit: "50mb" }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }),
+);
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 const limiter = rateLimit({
@@ -50,27 +56,28 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use("/api/", limiter);
+app.use('/api/', limiter);
 
-app.use("/api/auth", authRoutes);
+app.use('/api/auth', authRoutes);
 
-app.use("/api/simulator", simulatorRoutes);
-app.use("/api/payments", authenticateToken, paymentRoutes);
-app.use("/api/audit", authenticateToken, auditRoutes);
-app.use("/api/settings", authenticateToken, settingsRoutes);
-app.use("/api/publicidad", publicidadRoutes);
-app.use("/api/verifications", verificationRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/upload", uploadRoutes);
+app.use('/api/simulator', simulatorRoutes);
+app.use('/api/payments', authenticateToken, paymentRoutes);
+app.use('/api/audit', authenticateToken, auditRoutes);
+app.use('/api/settings', authenticateToken, settingsRoutes);
+app.use('/api/publicidad', publicidadRoutes);
+app.use('/api/verifications', verificationRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/catalog', catalogRoutes);
+app.use('/api/upload', uploadRoutes);
 
-app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.use(errorHandler);

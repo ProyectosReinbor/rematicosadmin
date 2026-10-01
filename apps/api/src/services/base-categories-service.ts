@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { BASE_CATEGORIES } from "../config/catalogCategories";
+import { PrismaClient } from '@prisma/client';
+import { BASE_CATEGORIES } from '../config/catalogCategories';
 
 /**
  * Inserta las categorías base definidas en código y completa el icono de las
@@ -11,6 +11,28 @@ import { BASE_CATEGORIES } from "../config/catalogCategories";
 export async function ensureBaseCategories(prisma: PrismaClient) {
   let created = 0;
   let iconsFilled = 0;
+
+  const legacy = await prisma.category.findUnique({ where: { slug: 'confaccion' } });
+  const canonical = await prisma.category.findUnique({ where: { slug: 'confeccion' } });
+  if (legacy && canonical) {
+    await prisma.$transaction([
+      prisma.product.updateMany({
+        where: { categoryId: legacy.id },
+        data: { categoryId: canonical.id },
+      }),
+      prisma.catalogGroup.updateMany({
+        where: { categoryId: legacy.id },
+        data: { categoryId: canonical.id },
+      }),
+      prisma.category.update({ where: { id: legacy.id }, data: { isActive: false, icon: null } }),
+    ]);
+  } else if (legacy) {
+    await prisma.category.update({ where: { id: legacy.id }, data: { slug: 'confeccion' } });
+  }
+  await prisma.category.updateMany({
+    where: { slug: { in: ['alfileres', 'accesorios-y-herramientas'] } },
+    data: { icon: null },
+  });
 
   for (const base of BASE_CATEGORIES) {
     const existing = await prisma.category.findUnique({ where: { slug: base.slug } });
@@ -30,8 +52,11 @@ export async function ensureBaseCategories(prisma: PrismaClient) {
       continue;
     }
 
-    if (!existing.icon) {
-      await prisma.category.update({ where: { id: existing.id }, data: { icon: base.icon } });
+    if (!existing.icon || !existing.isActive || existing.sortOrder !== base.sortOrder) {
+      await prisma.category.update({
+        where: { id: existing.id },
+        data: { icon: base.icon, isActive: true, sortOrder: base.sortOrder },
+      });
       iconsFilled += 1;
     }
   }

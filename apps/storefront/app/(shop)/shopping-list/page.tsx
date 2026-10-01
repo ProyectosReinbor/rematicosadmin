@@ -1,13 +1,25 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useShoppingList } from "../../lib/shopping-list-context";
+import { quantityStep } from '../../lib/quantity';
+import Link from 'next/link';
+import { useShoppingList } from '../../lib/shopping-list-context';
 
 const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: "unidad", METRO: "metro(s)", METRO_CUADRADO: "m²", METRO_LINEAL: "ml",
-  KILOGRAMO: "kg", LIBRA: "lb", PAQUETE_1000: "paquete(s)", PAQUETE_500: "paquete(s)",
-  PAQUETE_250: "paquete(s)", PAQUETE_100: "paquete(s)", DOCENA: "docena(s)",
-  PAR: "par(es)", JUEGO: "juego(s)", ROLLO: "rollo(s)", CAJA: "caja(s)",
+  UNIDAD: 'unidad',
+  METRO: 'metro(s)',
+  METRO_CUADRADO: 'm²',
+  METRO_LINEAL: 'ml',
+  KILOGRAMO: 'kg',
+  LIBRA: 'lb',
+  PAQUETE_1000: 'paquete(s) de 1000 unidades',
+  PAQUETE_500: 'paquete(s) de 500 unidades',
+  PAQUETE_250: 'paquete(s) de 250 unidades',
+  PAQUETE_100: 'paquete(s) de 100 unidades',
+  DOCENA: 'docena(s)',
+  PAR: 'par(es)',
+  JUEGO: 'juego(s)',
+  ROLLO: 'rollo(s)',
+  CAJA: 'caja(s)',
 };
 
 export default function ShoppingListPage() {
@@ -17,31 +29,51 @@ export default function ShoppingListPage() {
     const lines = items.map((item) => {
       const attrs = Object.entries(item.selectedOptions)
         .map(([k, v]) => `${k}: ${v}`)
-        .join(", ");
+        .join(', ');
       const unitLabel = UNIT_LABELS[item.unit] || item.unit;
-      return `- ${item.productName}${attrs ? ` (${attrs})` : ""}: ${item.quantity} ${unitLabel}`;
+      return `- ${item.productName}${attrs ? ` (${attrs})` : ''}: ${item.quantity} ${unitLabel}`;
     });
-    return `Hola, me interesa consultar disponibilidad de los siguientes productos:\n\n${lines.join("\n")}\n\nGracias!`;
+    return `Hola, me interesa consultar disponibilidad de los siguientes productos:\n\n${lines.join('\n')}\n\nGracias!`;
   };
 
   const sendWhatsApp = () => {
     const msg = encodeURIComponent(buildWhatsAppMessage());
-    window.open(`https://wa.me/573113487967?text=${msg}`, "_blank");
+    window.open(`https://wa.me/573113487967?text=${msg}`, '_blank');
   };
 
   if (items.length === 0) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-16 sm:py-24 text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-pink-50 mb-6">
-          <svg className="w-10 h-10 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+          <svg
+            className="w-10 h-10 text-[var(--color-primary)]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"
+            />
           </svg>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Tu lista está vacía</h1>
-        <p className="mt-2 text-gray-500">Explora nuestro catálogo y agrega productos que te interesen.</p>
-        <Link href="/products" className="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-rose-600 px-6 py-3 text-white font-semibold shadow-lg shadow-rose-200/50 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all">
+        <p className="mt-2 text-gray-500">
+          Explora nuestro catálogo y agrega productos que te interesen.
+        </p>
+        <Link
+          href="/products"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-primary)] to-rose-600 px-6 py-3 text-white font-semibold shadow-lg shadow-rose-200/50 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+            />
           </svg>
           Ver catálogo
         </Link>
@@ -54,14 +86,21 @@ export default function ShoppingListPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mi lista de compra</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{items.length} producto{items.length !== 1 ? "s" : ""} en tu lista</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {items.length} producto{items.length !== 1 ? 's' : ''} en tu lista
+          </p>
         </div>
         <button
           onClick={clearList}
           className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs sm:text-sm font-medium text-red-600 hover:bg-red-100 transition"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
           </svg>
           Limpiar
         </button>
@@ -72,27 +111,45 @@ export default function ShoppingListPage() {
           const attrs = Object.entries(item.selectedOptions);
           const unitLabel = UNIT_LABELS[item.unit] || item.unit;
           return (
-            <div key={item.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div
+              key={item.id}
+              className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+            >
               <div className="flex items-start gap-3 sm:gap-4">
                 {item.productImage ? (
                   <Link href={`/products/${item.productSlug}`} className="shrink-0">
-                    <img src={item.productImage} alt={item.productName} className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl object-cover hover:opacity-90 transition" />
+                    <img
+                      src={item.productImage}
+                      alt={item.productName}
+                      className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl object-cover hover:opacity-90 transition"
+                    />
                   </Link>
                 ) : (
                   <div className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-xl bg-gray-100 flex items-center justify-center text-gray-300">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
                     </svg>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <Link href={`/products/${item.productSlug}`} className="font-semibold text-sm sm:text-base text-gray-900 hover:text-[var(--color-primary)] transition-colors line-clamp-1">
+                  <Link
+                    href={`/products/${item.productSlug}`}
+                    className="font-semibold text-sm sm:text-base text-gray-900 hover:text-[var(--color-primary)] transition-colors line-clamp-1"
+                  >
                     {item.productName}
                   </Link>
                   {attrs.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {attrs.map(([k, v]) => (
-                        <span key={k} className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] sm:text-xs text-gray-600">
+                        <span
+                          key={k}
+                          className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] sm:text-xs text-gray-600"
+                        >
                           {k}: {v}
                         </span>
                       ))}
@@ -106,22 +163,38 @@ export default function ShoppingListPage() {
                   title="Eliminar"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                <span className="text-sm font-semibold text-gray-900">{item.quantity} {unitLabel}</span>
+                <span className="text-sm font-semibold text-gray-900">
+                  {item.quantity} {unitLabel}
+                </span>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    onClick={() => updateQuantity(item.id, item.quantity - quantityStep(item.unit))}
                     className="h-9 w-9 rounded-xl border border-gray-200 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition text-sm"
                   >
                     -
                   </button>
-                  <span className="w-10 text-center text-sm font-semibold tabular-nums">{item.quantity}</span>
+                  <input
+                    aria-label={`Cantidad de ${item.productName}`}
+                    type="number"
+                    min={quantityStep(item.unit)}
+                    step={quantityStep(item.unit)}
+                    max={999999}
+                    value={item.quantity}
+                    onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                    className="w-20 rounded-lg border p-2 text-center text-sm font-semibold tabular-nums"
+                  />
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    onClick={() => updateQuantity(item.id, item.quantity + quantityStep(item.unit))}
                     className="h-9 w-9 rounded-xl border border-gray-200 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition text-sm"
                   >
                     +
@@ -135,21 +208,37 @@ export default function ShoppingListPage() {
 
       <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm">
         <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          <svg
+            className="w-5 h-5 text-[var(--color-primary)]"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
           </svg>
           Resumen de tu solicitud
         </h2>
         <div className="space-y-2 text-sm mb-5">
           {items.map((item) => {
             const unitLabel = UNIT_LABELS[item.unit] || item.unit;
-            const attrs = Object.values(item.selectedOptions).join(", ");
+            const attrs = Object.values(item.selectedOptions).join(', ');
             return (
-              <div key={item.id} className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0">
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-2 py-1.5 border-b border-gray-50 last:border-0"
+              >
                 <span className="text-gray-600 truncate min-w-0">
-                  {item.productName}{attrs ? ` (${attrs})` : ""}
+                  {item.productName}
+                  {attrs ? ` (${attrs})` : ''}
                 </span>
-                <span className="shrink-0 font-semibold text-gray-900 text-right">{item.quantity} {unitLabel}</span>
+                <span className="shrink-0 font-semibold text-gray-900 text-right">
+                  {item.quantity} {unitLabel}
+                </span>
               </div>
             );
           })}

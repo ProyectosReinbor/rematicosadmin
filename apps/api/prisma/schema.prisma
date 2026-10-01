@@ -150,6 +150,7 @@ model Category {
   sortOrder   Int       @default(0) @map("sort_order")
   isActive    Boolean   @default(true) @map("is_active")
   products    Product[]
+  groups      CatalogGroup[]
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -169,6 +170,8 @@ model Product {
   isFeatured  Boolean       @default(false) @map("is_featured")
   categoryId  String        @map("category_id")
   category    Category      @relation(fields: [categoryId], references: [id])
+  typeId      String?       @map("type_id")
+  type        CatalogType?  @relation(fields: [typeId], references: [id], onDelete: Restrict)
   images      ProductImage[]
   options     ProductOption[]
   variants    ProductVariant[]
@@ -179,6 +182,26 @@ model Product {
   @@index([categoryId, status])
   @@index([status, isFeatured])
   @@index([name])
+}
+
+model CatalogGroup {
+  id         String @id @default(uuid())
+  name       String
+  categoryId String @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  types      CatalogType[]
+  @@unique([categoryId, name])
+  @@map("catalog_groups")
+}
+
+model CatalogType {
+  id      String @id @default(uuid())
+  name    String
+  groupId String @map("group_id")
+  group   CatalogGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  cards   Product[]
+  @@unique([groupId, name])
+  @@map("catalog_types")
 }
 
 model ProductImage {

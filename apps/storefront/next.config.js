@@ -1,13 +1,14 @@
-const API_URL = process.env.API_URL || "http://localhost:4000";
+const API_URL = process.env.API_URL || 'http://localhost:4000';
 
 const nextConfig = {
-  output: "standalone",
+  distDir: process.env.REMATICOS_DIST_DIR || '.next',
+  output: 'standalone',
   experimental: {
     turbo: {
       rules: {
-        "*.svg": {
+        '*.svg': {
           loaders: [],
-          as: "*",
+          as: '*',
         },
       },
     },
@@ -15,13 +16,13 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "localhost",
-        port: "4000",
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '4000',
       },
       {
-        protocol: "https",
-        hostname: "**",
+        protocol: 'https',
+        hostname: '**',
       },
     ],
   },
@@ -30,11 +31,11 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/:path*",
+        source: '/api/:path*',
         destination: `${API_URL}/api/:path*`,
       },
       {
-        source: "/uploads/:path*",
+        source: '/uploads/:path*',
         destination: `${API_URL}/uploads/:path*`,
       },
     ];
