@@ -4,12 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import AddToListModal from '../components/AddToListModal';
-import {
-  CatalogCategory,
-  CatalogTypeOption,
-  getTipoOption,
-  splitCategories,
-} from '../../lib/catalog';
+import { CatalogCategory, CatalogTypeOption, getTipoOption } from '../../lib/catalog';
 
 type Product = {
   id: string;
@@ -50,7 +45,6 @@ function ProductsCatalog() {
     })[]
   >([]);
   const [error, setError] = useState('');
-  const [types, setTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 24,
@@ -59,7 +53,6 @@ function ProductsCatalog() {
   });
   const [loading, setLoading] = useState(true);
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // El estado vive en la URL para que los enlaces del catálogo (por ejemplo el
   // que aparece en las migas de pan de la ficha de producto) funcionen.
@@ -69,11 +62,6 @@ function ProductsCatalog() {
   const tipo = searchParams.get('tipo') || '';
   const search = searchParams.get('search') || '';
   const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
-
-  const [searchInput, setSearchInput] = useState(search);
-  useEffect(() => {
-    setSearchInput(search);
-  }, [search]);
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -99,10 +87,12 @@ function ProductsCatalog() {
       .catch(() => setCategories([]));
   }, []);
 
-  const { base: baseCategories, extra: extraCategories } = splitCategories(categories);
   const activeCategory = categories.find((c) => c.slug === category);
+  const selectedCategory = tree.find((c) => c.slug === category);
+  const selectedGroup = selectedCategory?.groups.find((g) => g.id === groupId);
+  const selectedType = selectedGroup?.types.find((t) => t.id === typeId);
 
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -116,55 +106,30 @@ function ProductsCatalog() {
         params.set('option', 'Tipo');
         params.set('optionValue', tipo);
       }
-      const res = await fetch(`${API_URL}/api/products?${params}`);
-      if (!res.ok) throw new Error('Le catalogue no está disponible');
+      const res = await fetch(`${API_URL}/api/products?${params}`, { signal });
+      if (!res.ok) throw new Error('El catálogo no está disponible');
       const data = await res.json();
+      if (signal?.aborted) return;
       setError('');
       setProducts(data.data || []);
       setPagination(data.pagination || { page: 1, limit: 24, total: 0, totalPages: 0 });
     } catch {
+      if (signal?.aborted) return;
       setError('No pudimos cargar los productos. Intenta nuevamente.');
       setProducts([]);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [category, search, tipo, page, groupId, typeId]);
 
   useEffect(() => {
-    fetchProducts();
+    const controller = new AbortController();
+    fetchProducts(controller.signal);
+    return () => controller.abort();
   }, [fetchProducts]);
 
-  // Tipos disponibles de la categoría (o de todo el catálogo si no hay una seleccionada).
-  useEffect(() => {
-    const query = category ? `?category=${encodeURIComponent(category)}` : '';
-    let cancelled = false;
-    fetch(`${API_URL}/api/products/types${query}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setTypes(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setTypes([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [category]);
-
-  const handleSearch = () => updateParams({ search: searchInput.trim() || null });
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
-  };
   const clearFilters = () =>
     updateParams({ category: null, tipo: null, search: null, groupId: null, typeId: null });
-  const selectCategory = (slug: string) =>
-    updateParams({
-      category: category === slug ? null : slug,
-      tipo: null,
-      groupId: null,
-      typeId: null,
-    });
-  const selectTipo = (value: string) => updateParams({ tipo: tipo === value ? null : value });
 
   const pageNumbers = [];
   const maxVisible = 5;
@@ -177,207 +142,105 @@ function ProductsCatalog() {
 
   return (
     <div className="min-h-screen">
-
-      {/* Barra de categorías con iconos (solo las definidas en código) */}
-      {baseCategories.length > 0 && (
-        <section className="border-b border-gray-100 bg-white">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-3 sm:gap-4">
-              {baseCategories.map((item) => {
-                const isActive = category === item.slug;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => selectCategory(item.slug)}
-                    aria-pressed={isActive}
-                    className="group flex flex-col items-center gap-2 cursor-pointer"
-                  >
-                    <span
-                      className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border text-2xl sm:text-3xl shadow-sm transition-all duration-200 group-hover:scale-105 ${isActive ? 'border-rose-500 bg-rose-600 shadow-md shadow-rose-200/60' : 'border-rose-100 bg-rose-50 group-hover:border-rose-300 group-hover:bg-rose-100'}`}
-                    >
-                      {item.icon}
-                    </span>
-                    <span
-                      className={`text-[10px] sm:text-[11px] font-bold uppercase leading-tight tracking-tight text-center line-clamp-2 transition-colors ${isActive ? 'text-rose-600' : 'text-gray-600 group-hover:text-rose-600'}`}
-                    >
-                      {item.name}
-                    </span>
-                  </button>
-                );
-              })}
-
-              {/* Las categorías creadas desde el admin viven en su propia ventana */}
-              <Link
-                href="/categorias"
-                className="group flex flex-col items-center gap-2 cursor-pointer"
-              >
-                <span className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-2xl sm:text-3xl shadow-sm transition-all duration-200 group-hover:scale-105 group-hover:border-rose-300 group-hover:bg-rose-50">
-                  🔲
-                </span>
-                <span className="text-[10px] sm:text-[11px] font-bold uppercase leading-tight tracking-tight text-center text-gray-500 group-hover:text-rose-600 transition-colors">
-                  Más categorías
-                </span>
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
-        {/* Buscador y filtros */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-          <div className="relative flex-1 max-w-md">
-            <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="Buscar productos..."
-              className="w-full rounded-xl border border-gray-200 bg-white pl-10 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition shadow-sm"
-            />
-            <button
-              onClick={handleSearch}
-              aria-label="Buscar"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-rose-50 p-2 text-rose-600 hover:bg-rose-100 transition"
-            >
-              <SearchIcon />
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-              className="lg:hidden flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
-              Filtros
-              {activeFilters && <span className="h-2 w-2 rounded-full bg-rose-500" />}
-            </button>
-            <p className="text-sm text-gray-400 tabular-nums hidden sm:block">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            {activeCategory && (
+              <h1 className="text-xl font-semibold text-gray-900">{activeCategory.name}</h1>
+            )}
+            <p className="text-sm text-gray-500" aria-live="polite">
               {loading
                 ? 'Buscando...'
                 : `${pagination.total} producto${pagination.total !== 1 ? 's' : ''}`}
             </p>
           </div>
-        </div>
-
-        <div className={`lg:block ${mobileFiltersOpen ? 'block mb-5' : 'hidden'}`}>
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={clearFilters}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${!activeFilters ? 'bg-rose-600 text-white shadow-md shadow-rose-200/40' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              >
-                Todos
+          <div className="flex items-center gap-4 text-sm">
+            {activeFilters && (
+              <button onClick={clearFilters} className="font-medium text-rose-700 hover:underline">
+                Ver todo el catálogo
               </button>
-              {categories.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => selectCategory(item.slug)}
-                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all ${category === item.slug ? 'bg-rose-600 text-white shadow-md shadow-rose-200/40' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  {item.icon && <span aria-hidden="true">{item.icon}</span>}
-                  {item.name}
-                </button>
-              ))}
-              {extraCategories.length > 0 && (
-                <Link
-                  href="/categorias"
-                  className="rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-rose-100 hover:text-rose-600 transition-all"
-                >
-                  Ver todas las categorías
-                </Link>
-              )}
-            </div>
+            )}
+            <Link href="/categorias" className="text-gray-600 hover:text-rose-700">
+              Más categorías
+            </Link>
           </div>
         </div>
 
         {error && (
           <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">
             {error}{' '}
-            <button onClick={fetchProducts} className="underline">
+            <button onClick={() => fetchProducts()} className="underline">
               Reintentar
             </button>
           </p>
         )}
-        {category && (
-          <div className="my-5 grid gap-3 sm:grid-cols-2 rounded-2xl border bg-white p-4">
-            <label className="text-sm font-semibold">
-              Producto
-              <select
-                className="mt-2 w-full rounded-xl border p-3"
-                value={groupId}
-                onChange={(e) =>
-                  updateParams({ groupId: e.target.value || null, typeId: null, tipo: null })
-                }
-              >
-                <option value="">Todos los productos</option>
-                {tree
-                  .find((c) => c.slug === category)
-                  ?.groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <label className="text-sm font-semibold">
-              Tipo
-              <select
-                disabled={!groupId}
-                className="mt-2 w-full rounded-xl border p-3 disabled:opacity-40"
-                value={typeId}
-                onChange={(e) => updateParams({ typeId: e.target.value || null })}
-              >
-                <option value="">Todos los tipos</option>
-                {tree
-                  .find((c) => c.slug === category)
-                  ?.groups.find((g) => g.id === groupId)
-                  ?.types.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-        )}
-        {/* Tipos: cada categoría tiene sus tipos (ej. en Confección, Cinta → Agua, Doble razo, Floral...) */}
-        {types.length > 0 && (
-          <div className="mb-5 rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-                <span aria-hidden="true">🏷️</span>
-                {activeCategory ? `Tipos de ${activeCategory.name}` : 'Tipos'}
-              </h2>
-              {tipo && (
-                <button
-                  onClick={() => updateParams({ tipo: null })}
-                  className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100 transition"
-                >
-                  Quitar filtro
-                </button>
+        {selectedCategory && (
+          <section aria-label="Productos y tipos de la categoría" className="mb-6 space-y-4">
+            <nav
+              aria-label="Ruta del catálogo"
+              className="flex flex-wrap items-center gap-2 text-sm text-gray-500"
+            >
+              <Link href="/categorias" className="hover:text-rose-700">
+                Todas las categorías
+              </Link>
+              <span>/</span>
+              <Link href={`/products?category=${category}`} className="hover:text-rose-700">
+                {selectedCategory.name}
+              </Link>
+              {selectedGroup && (
+                <>
+                  <span>/</span>
+                  <Link
+                    href={`/products?category=${category}&groupId=${selectedGroup.id}`}
+                    className="hover:text-rose-700"
+                  >
+                    {selectedGroup.name}
+                  </Link>
+                </>
               )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {types.map((value) => (
-                <button
-                  key={value}
-                  onClick={() => selectTipo(value)}
-                  className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${tipo === value ? 'border-rose-500 bg-rose-500 text-white shadow-sm shadow-rose-200/50' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600'}`}
+              {selectedType && (
+                <>
+                  <span>/</span>
+                  <span className="font-medium text-gray-900">{selectedType.name}</span>
+                </>
+              )}
+            </nav>
+            {(selectedGroup ? [selectedGroup] : selectedCategory.groups).map((group) => (
+              <div
+                key={group.id}
+                className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5"
+              >
+                <Link
+                  href={`/products?category=${category}&groupId=${group.id}`}
+                  className="text-base font-semibold text-gray-900 hover:text-rose-700"
                 >
-                  {value}
-                </button>
-              ))}
-            </div>
-          </div>
+                  {group.name} <span aria-hidden="true">→</span>
+                </Link>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {group.types.map((type) => (
+                    <Link
+                      key={type.id}
+                      href={`/products?category=${category}&groupId=${group.id}&typeId=${type.id}`}
+                      aria-current={typeId === type.id ? 'page' : undefined}
+                      className={`rounded-full border px-4 py-2 text-sm transition ${typeId === type.id ? 'border-rose-700 bg-rose-700 text-white' : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-rose-300 hover:bg-rose-50'}`}
+                    >
+                      {type.name}
+                    </Link>
+                  ))}
+                  {!group.types.length && (
+                    <p className="text-sm text-gray-500">
+                      Este producto todavía no tiene tipos publicados en el catálogo.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+            {!selectedCategory.groups.length && (
+              <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+                Esta categoría todavía no tiene productos y tipos registrados.
+              </p>
+            )}
+          </section>
         )}
 
         {loading ? (

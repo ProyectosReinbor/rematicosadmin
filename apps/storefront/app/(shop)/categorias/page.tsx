@@ -43,7 +43,7 @@ export default function CategoriesPage() {
           </nav>
           <h1 className="mt-2 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-gray-900">Todas las categorías</h1>
           <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-500 max-w-xl">
-            Las primeras son las categorías principales del catálogo; el resto son las que se han ido creando desde el panel de administración.
+            Explora todas nuestras categorías y elige los productos para tu próximo proyecto.
           </p>
 
           <div className="relative mt-5 max-w-md">

@@ -27,6 +27,88 @@ router.get(
     );
   }),
 );
+router.get(
+  '/search',
+  run(async (req, res) => {
+    const parsed = z.string().trim().min(1).max(100).safeParse(req.query.q);
+    if (!parsed.success) return res.json([]);
+    const name = { contains: parsed.data, mode: 'insensitive' as const };
+    const results: { id: string; name: string; kind: string; context: string; href: string }[] = [];
+    const url = (category: string, groupId?: string, typeId?: string) => {
+      const params = new URLSearchParams({ category });
+      if (groupId) params.set('groupId', groupId);
+      if (typeId) params.set('typeId', typeId);
+      return `/products?${params}`;
+    };
+
+    const categories = await prisma.category.findMany({
+      where: { isActive: true, name },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      take: 4,
+    });
+    results.push(
+      ...categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        kind: 'Categoría',
+        context: 'Explorar categoría',
+        href: url(c.slug),
+      })),
+    );
+    if (results.length < 4) {
+      const groups = await prisma.catalogGroup.findMany({
+        where: { name, category: { isActive: true } },
+        include: { category: true },
+        orderBy: { name: 'asc' },
+        take: 4 - results.length,
+      });
+      results.push(
+        ...groups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          kind: 'Producto',
+          context: g.category.name,
+          href: url(g.category.slug, g.id),
+        })),
+      );
+    }
+    if (results.length < 4) {
+      const types = await prisma.catalogType.findMany({
+        where: { name, group: { category: { isActive: true } } },
+        include: { group: { include: { category: true } } },
+        orderBy: { name: 'asc' },
+        take: 4 - results.length,
+      });
+      results.push(
+        ...types.map((t) => ({
+          id: t.id,
+          name: t.name,
+          kind: 'Tipo',
+          context: `${t.group.category.name} · ${t.group.name}`,
+          href: url(t.group.category.slug, t.groupId, t.id),
+        })),
+      );
+    }
+    if (results.length < 4) {
+      const cards = await prisma.product.findMany({
+        where: { name, status: 'PUBLISHED', category: { isActive: true } },
+        include: { category: true, type: { include: { group: true } } },
+        orderBy: { name: 'asc' },
+        take: 4 - results.length,
+      });
+      results.push(
+        ...cards.map((c) => ({
+          id: c.id,
+          name: c.name,
+          kind: 'Tarjeta',
+          context: [c.category.name, c.type?.group.name, c.type?.name].filter(Boolean).join(' · '),
+          href: `/products/${encodeURIComponent(c.slug)}`,
+        })),
+      );
+    }
+    res.json(results);
+  }),
+);
 router.use(authenticateToken, requireRole('ADMIN'));
 router.delete(
   '/categories/:id',
@@ -60,17 +142,15 @@ for (const kind of ['groups', 'types'] as const) {
           ? await prisma.category.findUnique({ where: { id: data.categoryId } })
           : await prisma.catalogGroup.findUnique({ where: { id: data.groupId } });
       if (!parent) return fail(res, 404, 'No se encontró el elemento superior');
-      res
-        .status(201)
-        .json(
-          kind === 'groups'
-            ? await prisma.catalogGroup.create({
-                data: { name: data.name, categoryId: data.categoryId! },
-              })
-            : await prisma.catalogType.create({
-                data: { name: data.name, groupId: data.groupId! },
-              }),
-        );
+      res.status(201).json(
+        kind === 'groups'
+          ? await prisma.catalogGroup.create({
+              data: { name: data.name, categoryId: data.categoryId! },
+            })
+          : await prisma.catalogType.create({
+              data: { name: data.name, groupId: data.groupId! },
+            }),
+      );
     }),
   );
   router.put(

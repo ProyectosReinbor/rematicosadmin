@@ -1,45 +1,48 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import HomeCarousel from './components/HomeCarousel';
 const categories = [
   {
     slug: 'confeccion',
     name: 'Confección',
-    icon: '👗',
+    image: 'confeccion.jpeg',
     detail: 'Cintas, elásticos y los detalles que transforman tus prendas.',
   },
   {
     slug: 'agujas',
     name: 'Agujas',
-    icon: '🪡',
+    image: 'agujas.jpeg',
     detail: 'Encuentra la aguja para cada puntada y cada proyecto.',
   },
   {
     slug: 'hilos',
     name: 'Hilos',
-    icon: '🧵',
+    image: 'hilos.jpeg',
     detail: 'Dale color a tus ideas, desde la costura hasta el bordado.',
   },
   {
     slug: 'decoracion',
     name: 'Decoración',
-    icon: '🎀',
+    image: 'descoracion.jpeg',
     detail: 'Pequeños detalles para crear algo especial.',
   },
   {
     slug: 'lanas',
     name: 'Lanas',
-    icon: '🧶',
+    image: 'lanas.jpeg',
     detail: 'Texturas y colores para tejer con imaginación.',
   },
   {
     slug: 'tijeras',
     name: 'Tijeras',
-    icon: '✂️',
+    image: 'tijeras.jpeg',
     detail: 'El corte preciso que tu trabajo necesita.',
   },
 ];
 export default function HomePage() {
   return (
     <div>
+      <HomeCarousel />
       <section className="bg-[#bc1736] text-white">
         <div className="max-w-7xl mx-auto px-6 py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
@@ -72,30 +75,23 @@ export default function HomePage() {
               </a>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/20 bg-white/10 p-5 sm:p-8">
+          <div className="rounded-3xl border border-white/20  p-5 sm:p-8 bg-[#ffe482]">
             <img
               src="/logoCircular.png"
               alt="Rematico Villavicencio — Comercializadora Isanvictorino S.A.S."
               className="w-full rounded-xl"
             />
-            <div className="mt-7 grid grid-cols-3 gap-4 text-center">
+            <div className="mt-7 grid grid-cols-3 gap-4 text-center ">
               {['Crea', 'Decora', 'Teje'].map((word, i) => (
-                <div key={word}>
+                <div key={word} className="border-black border rounded-xl p-4 bg-[#fff8df]">
                   <p className="text-4xl">{['🪡', '🎀', '🧶'][i]}</p>
-                  <p className="mt-3 font-bold text-yellow-100">{word}</p>
+                  <p className="mt-3 font-bold text-black">{word}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
       </section>
-      <div className="bg-[#fff8df] border-b border-yellow-200">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex flex-wrap gap-5 justify-between text-sm font-semibold text-[#6c5420]">
-          <span>✓ Venta al por mayor y al detal</span>
-          <span>✓ Presentaciones para cada necesidad</span>
-          <span>✓ Atención directa por WhatsApp</span>
-        </div>
-      </div>
       <section className="max-w-7xl mx-auto px-6 py-16">
         <p className="text-red-700 text-xs uppercase tracking-widest font-bold">
           Encuentra lo que necesitas
@@ -111,7 +107,15 @@ export default function HomePage() {
               href={`/products?category=${c.slug}`}
               className="group rounded-2xl border border-gray-200 p-7 hover:border-red-400 hover:shadow-lg transition"
             >
-              <span className="text-4xl inline-flex bg-[#fff8df] rounded-2xl p-4">{c.icon}</span>
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#fff8df]">
+                <Image
+                  src={`/categorias-inicio/${c.image}`}
+                  alt={c.name}
+                  fill
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  className="object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
               <h3 className="mt-5 text-xl font-bold group-hover:text-red-700">{c.name}</h3>
               <p className="mt-2 text-gray-600 text-sm leading-relaxed">{c.detail}</p>
               <p className="mt-5 text-red-700 font-semibold text-sm">Ver productos →</p>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import ShoppingListButton from './components/ShoppingListButton';
+import CatalogPanel from './components/CatalogPanel';
 
 const navLinks = [
   { href: '/', label: 'Inicio' },
@@ -107,6 +108,8 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
         )}
       </header>
 
+      <CatalogPanel />
+
       <main className="flex-1">{children}</main>
 
       <footer className="bg-gray-900 text-white">
@@ -114,7 +117,6 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             <div className="sm:col-span-2 md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🎉</span>
                 <span className="text-xl font-bold">Rematico Villavicencio</span>
               </div>
               <p className="text-gray-400 text-sm">
