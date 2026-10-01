@@ -113,7 +113,7 @@ export default function ShopLayout({
               </div>
               <p className="text-gray-400 text-sm">
                 Tu tienda de confianza para adornos y decoraciones en
-                Villavicencio. Más de 10 años acompañando tus momentos
+                Villavicencio. Más de 15 años acompañando tus momentos
                 especiales.
               </p>
             </div>

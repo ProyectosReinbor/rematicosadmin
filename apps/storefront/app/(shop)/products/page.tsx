@@ -117,7 +117,7 @@ export default function ProductsPage() {
 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            {[1,2,3,4,5,6,7,8].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <div key={n} className="animate-pulse rounded-2xl border border-gray-100 bg-white overflow-hidden">
                 <div className="aspect-square bg-gray-100" />
                 <div className="p-3 sm:p-4 space-y-3">
