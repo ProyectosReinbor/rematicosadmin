@@ -6,6 +6,7 @@ import ShoppingListButton from "./components/ShoppingListButton";
 
 const navLinks = [
   { href: "/products", label: "Productos" },
+  { href: "/categorias", label: "Categorías" },
   { href: "/shopping-list", label: "Mi lista" },
 ];
 

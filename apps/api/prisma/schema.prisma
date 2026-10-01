@@ -142,6 +142,11 @@ model Category {
   slug        String    @unique
   description String?
   imageUrl    String?   @map("image_url")
+  /// Emoji de la categoría. Solo lo tienen las categorías base definidas en
+  /// código (ver src/config/catalogCategories.ts); su presencia es lo que hace
+  /// que la categoría aparezca en la barra de iconos del catálogo público en
+  /// lugar de en la ventana /categorias.
+  icon        String?
   sortOrder   Int       @default(0) @map("sort_order")
   isActive    Boolean   @default(true) @map("is_active")
   products    Product[]
@@ -150,6 +155,7 @@ model Category {
 
   @@map("categories")
   @@index([isActive, sortOrder])
+  @@index([icon])
 }
 
 model Product {

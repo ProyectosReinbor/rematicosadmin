@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CatalogCategory,
   CatalogProduct,
@@ -59,6 +59,16 @@ export default function ProductsPage() {
   }, [search, filterCategory, filterStatus]);
 
   useEffect(() => { load(1); }, [load]);
+
+  // Las categorías con icono son las principales (definidas en el código del
+  // catálogo); el resto son las que el administrador ha ido creando.
+  const { base: baseCategories, extra: extraCategories } = useMemo(
+    () => ({
+      base: categories.filter((c) => !!c.icon),
+      extra: categories.filter((c) => !c.icon),
+    }),
+    [categories]
+  );
 
   const createCategory = async (event: FormEvent) => {
     event.preventDefault();
@@ -197,14 +207,21 @@ export default function ProductsPage() {
       </div>
 
       <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
           <h2 className="text-sm font-semibold text-gray-700">Categorías</h2>
-          {!showNewCategory && (
-            <button type="button" onClick={() => { setShowNewCategory(true); setCategoryError(""); }} className="rounded-xl bg-rose-50 px-3.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100 transition whitespace-nowrap">
-              + Nueva categoría
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-medium text-rose-600">{baseCategories.length} principales</span>
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">{extraCategories.length} adicionales</span>
+            {!showNewCategory && (
+              <button type="button" onClick={() => { setShowNewCategory(true); setCategoryError(""); }} className="rounded-xl bg-rose-50 px-3.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100 transition whitespace-nowrap">
+                + Nueva categoría
+              </button>
+            )}
+          </div>
         </div>
+        <p className="mb-4 text-xs leading-relaxed text-gray-400">
+          Las categorías <span className="font-medium text-rose-600">principales</span> están definidas en el código del catálogo y tienen icono: se muestran en la barra de iconos de la web. Las <span className="font-medium text-gray-600">adicionales</span> que crees aquí se muestran en la ventana <span className="font-medium text-gray-600">/categorias</span>.
+        </p>
 
         {showNewCategory && (
           <form onSubmit={createCategory} className="mb-4 space-y-2 rounded-xl border border-rose-100 bg-rose-50/50 p-3 sm:p-4">
@@ -218,6 +235,7 @@ export default function ProductsPage() {
                 </button>
               </div>
             </div>
+            <p className="text-[11px] text-gray-400">Se mostrará en la web dentro de la ventana /categorias.</p>
           </form>
         )}
 
@@ -232,7 +250,7 @@ export default function ProductsPage() {
         {categories.length === 0 ? (
           <p className="text-sm text-gray-400">No hay categorías creadas aún.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {categories.map((cat) => editingCategoryId === cat.id ? (
               <div key={cat.id} className="space-y-2 rounded-xl border border-rose-100 bg-rose-50/50 p-3">
                 <p className="text-xs font-semibold text-gray-700">Editar categoría</p>
@@ -254,8 +272,18 @@ export default function ProductsPage() {
                 </div>
               </div>
             ) : (
-              <div key={cat.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5">
-                <span className="truncate text-sm font-medium text-gray-700">{cat.name}</span>
+              <div key={cat.id} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-base ${cat.icon ? "border-rose-100 bg-rose-50" : "border-gray-200 bg-white"}`} aria-hidden="true">
+                    {cat.icon || "🔲"}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-gray-700">{cat.name}</span>
+                    <span className={`block text-[10px] font-medium uppercase tracking-wide ${cat.icon ? "text-rose-500" : "text-gray-400"}`}>
+                      {cat.icon ? "Principal" : "Adicional"}
+                    </span>
+                  </span>
+                </span>
                 <button type="button" onClick={() => startEditCategory(cat)} className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition">Editar</button>
               </div>
             ))}
@@ -300,7 +328,11 @@ export default function ProductsPage() {
                         {statusBadge(product.status)}
                       </div>
                       <p className="text-sm text-gray-500 mt-0.5">
-                        {product.category.name} · {product.images.length} imagen(es) · {product.options.length} atributo(s)
+                        <span className="inline-flex items-center gap-1">
+                          {product.category.icon && <span aria-hidden="true">{product.category.icon}</span>}
+                          {product.category.name}
+                        </span>
+                        {" · "}{product.images.length} imagen(es) · {product.options.length} atributo(s)
                       </p>
                     </div>
                   </div>

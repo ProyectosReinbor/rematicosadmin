@@ -235,7 +235,7 @@ export async function fetchVerificationStats(): Promise<VerificationStats> {
 }
 
 export type ProductStatus = "DRAFT" | "PUBLISHED" | "UNAVAILABLE" | "ARCHIVED";
-export interface CatalogCategory { id: string; name: string; slug: string; }
+export interface CatalogCategory { id: string; name: string; slug: string; description?: string | null; /** Emoji: solo lo tienen las categorías base definidas en código. */ icon?: string | null; }
 export interface OptionValueItem { id: string; value: string; }
 export interface CatalogOption { id: string; name: string; values: OptionValueItem[]; }
 export interface CatalogProduct { id: string; name: string; slug: string; description: string; details: string | null; unit: string; status: ProductStatus; isFeatured: boolean; category: CatalogCategory; images: { id: string; url: string; altText: string | null; sortOrder: number; isPrimary: boolean }[]; options: CatalogOption[]; variants: { id: string; reference: string | null; attributes: Record<string, string>; imageUrl: string | null; isAvailable: boolean }[]; }

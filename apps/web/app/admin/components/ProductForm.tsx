@@ -61,7 +61,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
   const [options, setOptions] = useState<{ id?: string; name: string; values: { id?: string; value: string }[] }[]>(
     product?.options.map((o) => ({ id: o.id, name: o.name, values: o.values.map((v) => ({ id: v.id, value: v.value })) })) || []
   );
-  const [newOptionName, setNewOptionName] = useState("");
+  const [newOptionName, setNewOptionName] = useState("Tipo");
   const [newOptionValues, setNewOptionValues] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -198,7 +198,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
           Categoría
           <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
             <option value="">Selecciona una categoría</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>)}
           </select>
         </label>
         <label className="text-sm font-medium text-gray-700">
@@ -261,8 +261,12 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
       </div>
 
       <div>
-        <h3 className="mb-3 text-sm font-semibold text-gray-700">Atributos</h3>
-        <p className="text-xs text-gray-400 mb-3">Ej: Color (Rojo, Azul, Dorado), Tamaño (Pequeño, Mediano, Grande)</p>
+        <h3 className="mb-3 text-sm font-semibold text-gray-700">Tipos y atributos</h3>
+        <p className="text-xs text-gray-400 mb-3">
+          El atributo <span className="font-medium text-rose-600">Tipo</span> se muestra como filtro en el catálogo. Ej. en la categoría
+          Confección, el producto <span className="font-medium">Cinta</span> puede tener los tipos Agua, Doble razo, Floral, Fusionable y Satinada.
+          También puedes registrar otros atributos: Color (Rojo, Azul, Dorado), Tamaño (Pequeño, Mediano, Grande).
+        </p>
         {options.map((opt, optIdx) => (
           <div key={optIdx} className="mb-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -282,7 +286,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
         ))}
 
         <div className="flex flex-col sm:flex-row gap-2 mt-3">
-          <input value={newOptionName} onChange={(e) => setNewOptionName(e.target.value)} placeholder="Atributo (ej: Color)" className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20" />
+          <input value={newOptionName} onChange={(e) => setNewOptionName(e.target.value)} placeholder="Tipo o atributo (ej: Tipo)" className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20" />
           <input value={newOptionValues} onChange={(e) => setNewOptionValues(e.target.value)} placeholder="Valores separados por coma" className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addOption())} />
           <button type="button" onClick={addOption} className="rounded-xl bg-rose-50 px-5 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-100 transition whitespace-nowrap">Agregar</button>
         </div>

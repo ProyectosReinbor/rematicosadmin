@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { PrismaClient, ProductStatus } from "@prisma/client";
 import { z } from "zod";
 import { authenticateToken, requireRole } from "../../middleware/auth";
+import { TIPO_OPTION_NAME } from "../../config/catalogCategories";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -39,13 +40,13 @@ const productInclude = {
 };
 
 const productListInclude = {
-  category: { select: { id: true, name: true, slug: true } },
+  category: { select: { id: true, name: true, slug: true, icon: true } },
   images: { where: { isPrimary: true }, take: 1, orderBy: { sortOrder: "asc" as const } },
   options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
 };
 
 const adminProductListInclude = {
-  category: { select: { id: true, name: true, slug: true } },
+  category: { select: { id: true, name: true, slug: true, icon: true } },
   images: { orderBy: [{ isPrimary: "desc" as const }, { sortOrder: "asc" as const }] },
   options: { orderBy: { sortOrder: "asc" as const }, include: { values: { orderBy: { id: "asc" as const } } } },
 };
@@ -53,6 +54,27 @@ const adminProductListInclude = {
 // ─── Public ────────────────────────────────────────
 router.get("/categories", async (_req: Request, res: Response) => {
   res.json(await prisma.category.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }));
+});
+
+// Tipos disponibles (atributo "Tipo" de los productos publicados). Si se envía
+// `category`, solo devuelve los tipos de esa categoría. Ej. en Confección,
+// Cinta → Agua, Doble razo, Floral, Fusionable, Satinada.
+router.get("/types", async (req: Request, res: Response) => {
+  const category = typeof req.query.category === "string" ? req.query.category : undefined;
+  const productScope = {
+    status: "PUBLISHED" as const,
+    ...(category ? { category: { slug: category } } : {}),
+  };
+
+  const values = await prisma.optionValue.findMany({
+    where: {
+      option: { name: { equals: TIPO_OPTION_NAME, mode: "insensitive" as const }, product: productScope },
+    },
+    orderBy: { value: "asc" },
+    select: { value: true },
+  });
+
+  res.json(Array.from(new Set(values.map((v) => v.value))));
 });
 
 router.get("/", async (req: Request, res: Response) => {
