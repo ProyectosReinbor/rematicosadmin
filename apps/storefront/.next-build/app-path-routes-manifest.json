@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/(shop)/page": "/",
+  "/(shop)/categorias/page": "/categorias",
+  "/(shop)/products/page": "/products",
+  "/(shop)/products/[slug]/page": "/products/[slug]",
+  "/(shop)/shopping-list/page": "/shopping-list",
+  "/(shop)/location/page": "/location"
+}

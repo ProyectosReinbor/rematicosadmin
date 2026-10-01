@@ -18,12 +18,10 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-14 sm:h-16 items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 shrink-0">
-              <img src="/logo.jpeg" alt="Rematico" className="h-10 w-24 rounded object-contain" />
-              <span className="text-lg sm:text-xl font-bold text-[var(--color-primary)]">
-                Rematico Villavicencio
-              </span>
+          <div className="flex h-14 sm:h-16 items-center justify-between my-5">
+            <Link href="/" className="flex items-center gap-2 shrink-0 ">
+              <img src="/logoRectangular.png" alt="Rematico"
+                className="h-40 w-36 sm:h-20 sm:w-24 rounded object-contain" />
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">
@@ -38,7 +36,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
               ))}
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-6 sm:gap-3">
               <ShoppingListButton />
               <a
                 href="https://wa.me/573113487967"

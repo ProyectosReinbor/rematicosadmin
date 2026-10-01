@@ -74,7 +74,7 @@ export default function HomePage() {
           </div>
           <div className="rounded-3xl border border-white/20 bg-white/10 p-5 sm:p-8">
             <img
-              src="/logo.jpeg"
+              src="/logoCircular.png"
               alt="Rematico Villavicencio — Comercializadora Isanvictorino S.A.S."
               className="w-full rounded-xl"
             />

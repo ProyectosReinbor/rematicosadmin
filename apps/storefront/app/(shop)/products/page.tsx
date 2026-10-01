@@ -177,19 +177,6 @@ function ProductsCatalog() {
 
   return (
     <div className="min-h-screen">
-      {/* Encabezado del catálogo */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-rose-50 via-pink-50 to-amber-50 border-b border-rose-100/60">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-rose-500">Catálogo</p>
-          <h1 className="mt-1 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-gray-900">
-            Nuestros Productos
-          </h1>
-          <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-500 max-w-xl">
-            Encuentra los insumos perfectos para tu proyecto creativo. Explora por categoría, filtra
-            por tipo y descubre.
-          </p>
-        </div>
-      </div>
 
       {/* Barra de categorías con iconos (solo las definidas en código) */}
       {baseCategories.length > 0 && (

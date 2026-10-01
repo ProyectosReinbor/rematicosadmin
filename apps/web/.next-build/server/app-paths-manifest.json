@@ -1,0 +1,14 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/(public)/contact/page": "app/(public)/contact/page.js",
+  "/(public)/about/page": "app/(public)/about/page.js",
+  "/(public)/catalog/page": "app/(public)/catalog/page.js",
+  "/(public)/faq/page": "app/(public)/faq/page.js",
+  "/(public)/gallery/page": "app/(public)/gallery/page.js",
+  "/(public)/location/page": "app/(public)/location/page.js",
+  "/admin/products/page": "app/admin/products/page.js",
+  "/admin/customers/page": "app/admin/customers/page.js",
+  "/admin/settings/page": "app/admin/settings/page.js"
+}

@@ -226,7 +226,7 @@ describe('Auth API', () => {
         .get('/api/auth/me')
         .set('Authorization', 'Bearer invalid-token');
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
     });
   });
 });
