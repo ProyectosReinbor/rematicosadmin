@@ -11,7 +11,7 @@ type Product = {
   name: string;
   slug: string;
   description: string;
-  unit: string;
+
   category: { id: string; name: string; slug: string; icon: string | null };
   images: { id: string; url: string; altText: string | null }[];
   options: CatalogTypeOption[];
@@ -92,35 +92,38 @@ function ProductsCatalog() {
   const selectedGroup = selectedCategory?.groups.find((g) => g.id === groupId);
   const selectedType = selectedGroup?.types.find((t) => t.id === typeId);
 
-  const fetchProducts = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set('page', String(page));
-      params.set('limit', '24');
-      if (category) params.set('category', category);
-      if (groupId) params.set('groupId', groupId);
-      if (typeId) params.set('typeId', typeId);
-      if (search) params.set('search', search);
-      if (tipo) {
-        params.set('option', 'Tipo');
-        params.set('optionValue', tipo);
+  const fetchProducts = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set('page', String(page));
+        params.set('limit', '24');
+        if (category) params.set('category', category);
+        if (groupId) params.set('groupId', groupId);
+        if (typeId) params.set('typeId', typeId);
+        if (search) params.set('search', search);
+        if (tipo) {
+          params.set('option', 'Tipo');
+          params.set('optionValue', tipo);
+        }
+        const res = await fetch(`${API_URL}/api/products?${params}`, { signal });
+        if (!res.ok) throw new Error('El catálogo no está disponible');
+        const data = await res.json();
+        if (signal?.aborted) return;
+        setError('');
+        setProducts(data.data || []);
+        setPagination(data.pagination || { page: 1, limit: 24, total: 0, totalPages: 0 });
+      } catch {
+        if (signal?.aborted) return;
+        setError('No pudimos cargar los productos. Intenta nuevamente.');
+        setProducts([]);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
       }
-      const res = await fetch(`${API_URL}/api/products?${params}`, { signal });
-      if (!res.ok) throw new Error('El catálogo no está disponible');
-      const data = await res.json();
-      if (signal?.aborted) return;
-      setError('');
-      setProducts(data.data || []);
-      setPagination(data.pagination || { page: 1, limit: 24, total: 0, totalPages: 0 });
-    } catch {
-      if (signal?.aborted) return;
-      setError('No pudimos cargar los productos. Intenta nuevamente.');
-      setProducts([]);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [category, search, tipo, page, groupId, typeId]);
+    },
+    [category, search, tipo, page, groupId, typeId],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -363,7 +366,6 @@ function ProductsCatalog() {
                       <p className="mt-1 text-xs text-gray-500">
                         {product.type && `${product.type.group.name} · ${product.type.name}`}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">Venta por {product.unit}</p>
                       <div className="mt-auto pt-3">
                         <button
                           onClick={(e) => {

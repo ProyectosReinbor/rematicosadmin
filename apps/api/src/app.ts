@@ -17,6 +17,7 @@ import verificationRoutes from './routes/verifications';
 import productRoutes from './routes/products';
 import catalogRoutes from './routes/catalog';
 import uploadRoutes from './routes/upload';
+import catalogBackupRoutes from './routes/catalog-backup';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use('/api/catalog-backup', catalogBackupRoutes);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
 

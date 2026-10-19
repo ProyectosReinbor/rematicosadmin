@@ -44,7 +44,7 @@ const productSchema = z.object({
   typeId: z.string().uuid().optional(),
   details: z.string().max(3000).optional(),
   categoryId: z.string().uuid(),
-  unit: z.string().trim().min(1).max(60).optional(),
+
   status: z.nativeEnum(ProductStatus).optional(),
   isFeatured: z.boolean().optional(),
   images: z.array(imageSchema).max(12).optional(),
@@ -291,15 +291,13 @@ router.post(
       .object({ name: z.string().trim().min(2).max(80), slug: z.string().optional() })
       .safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Categoría inválida',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Categoría inválida',
+          details: parsed.error.errors,
+        },
+      });
     const name = parsed.data.name;
     const slug = parsed.data.slug || slugify(name);
     const existing = await prisma.category.findFirst({
@@ -318,15 +316,13 @@ router.put(
   run(async (req: Request, res: Response) => {
     const parsed = z.object({ name: z.string().trim().min(2).max(80) }).safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Categoría inválida',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Categoría inválida',
+          details: parsed.error.errors,
+        },
+      });
     const category = await prisma.category.findUnique({ where: { id: req.params.id } });
     if (!category)
       return res
@@ -347,21 +343,83 @@ router.put(
   }),
 );
 
+// Un identificador por tarjeta permite reintentar sin duplicar un lote ya guardado.
+router.post(
+  '/bulk',
+  run(async (req, res) => {
+    const parsed = z
+      .object({
+        categoryId: z.string().uuid(),
+        typeId: z.string().uuid(),
+        status: z.enum(['PUBLISHED', 'DRAFT']),
+        cards: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              name: z.string().trim().min(3).max(160),
+              image: imageSchema,
+            }),
+          )
+          .min(1)
+          .max(300),
+      })
+      .safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({
+          error: {
+            message: 'Revisa los nombres e imágenes. Puedes crear hasta 300 tarjetas por lote.',
+          },
+        });
+    const { categoryId, typeId, status, cards } = parsed.data;
+    if (new Set(cards.map((card) => card.id)).size !== cards.length)
+      return res
+        .status(400)
+        .json({ error: { message: 'El lote contiene identificadores repetidos.' } });
+    if (!(await validType(typeId, categoryId)))
+      return res
+        .status(400)
+        .json({ error: { message: 'El tipo no pertenece a la categoría seleccionada.' } });
+    await prisma.$transaction(
+      async (db) => {
+        for (const card of cards)
+          await db.product.upsert({
+            where: { id: card.id },
+            update: {},
+            create: {
+              id: card.id,
+              name: card.name,
+              slug: `${slugify(card.name) || 'tarjeta'}-${card.id}`,
+              description: '',
+              categoryId,
+              typeId,
+              status,
+              images: {
+                create: { url: card.image.url, altText: card.name, sortOrder: 0, isPrimary: true },
+              },
+            },
+          });
+      },
+      { timeout: 120000 },
+    );
+    res.status(201).json({ count: cards.length });
+  }),
+);
+
 // Create product
 router.post(
   '/',
   run(async (req: Request, res: Response) => {
     const parsed = productSchema.safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Datos de producto inválidos',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Datos de producto inválidos',
+          details: parsed.error.errors,
+        },
+      });
     const data = parsed.data;
     if (data.typeId && !(await validType(data.typeId, data.categoryId)))
       return res
@@ -376,7 +434,7 @@ router.post(
         description: data.description,
         typeId: data.typeId,
         details: data.details,
-        unit: data.unit || 'UNIDAD',
+
         categoryId: data.categoryId,
         status: data.status || 'DRAFT',
         isFeatured: data.isFeatured || false,
@@ -416,22 +474,20 @@ router.put(
         typeId: z.string().uuid().optional().nullable(),
         images: z.array(imageSchema).min(1).max(12).optional(),
         details: z.string().max(3000).optional().nullable(),
-        unit: z.string().trim().min(1).max(60).optional(),
+
         categoryId: z.string().uuid().optional(),
         status: z.nativeEnum(ProductStatus).optional(),
         isFeatured: z.boolean().optional(),
       })
       .safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Datos inválidos',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Datos inválidos',
+          details: parsed.error.errors,
+        },
+      });
     const data = parsed.data;
     const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: { message: 'Tarjeta no encontrada' } });
@@ -447,7 +503,7 @@ router.put(
     }
     if (data.description !== undefined) updateData.description = data.description;
     if (data.details !== undefined) updateData.details = data.details;
-    if (data.unit !== undefined) updateData.unit = data.unit;
+
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
@@ -476,15 +532,13 @@ router.patch(
   run(async (req: Request, res: Response) => {
     const parsed = productSchema.partial().safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Datos de producto inválidos',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Datos de producto inválidos',
+          details: parsed.error.errors,
+        },
+      });
     const { images: _images, options: _options, ...data } = parsed.data;
     const existing = await prisma.product.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: { message: 'Tarjeta no encontrada' } });
@@ -500,7 +554,7 @@ router.patch(
     }
     if (data.description !== undefined) updateData.description = data.description;
     if (data.details !== undefined) updateData.details = data.details;
-    if (data.unit !== undefined) updateData.unit = data.unit;
+
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
@@ -529,15 +583,13 @@ router.post(
   run(async (req: Request, res: Response) => {
     const parsed = z.object({ images: z.array(imageSchema).min(1).max(12) }).safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Imágenes inválidas',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Imágenes inválidas',
+          details: parsed.error.errors,
+        },
+      });
     const [count, primaryCount] = await Promise.all([
       prisma.productImage.count({ where: { productId: req.params.id } }),
       prisma.productImage.count({ where: { productId: req.params.id, isPrimary: true } }),
@@ -614,15 +666,13 @@ router.post(
       .object({ name: z.string().min(1).max(60), values: z.array(optionValueSchema).min(1) })
       .safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Atributo inválido',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Atributo inválido',
+          details: parsed.error.errors,
+        },
+      });
     const count = await prisma.productOption.count({ where: { productId: req.params.id } });
     await prisma.productOption.create({
       data: {
@@ -710,15 +760,13 @@ router.post(
   run(async (req: Request, res: Response) => {
     const parsed = variantSchema.safeParse(req.body);
     if (!parsed.success)
-      return res
-        .status(400)
-        .json({
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Variante inválida',
-            details: parsed.error.errors,
-          },
-        });
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Variante inválida',
+          details: parsed.error.errors,
+        },
+      });
     const variant = await prisma.productVariant.create({
       data: { productId: req.params.id, ...parsed.data },
     });

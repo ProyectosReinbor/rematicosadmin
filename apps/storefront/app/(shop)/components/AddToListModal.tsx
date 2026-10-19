@@ -1,6 +1,5 @@
 'use client';
 
-import { quantityStep, normalizeQuantity } from '../../lib/quantity';
 import { useState } from 'react';
 import { useShoppingList } from '../../lib/shopping-list-context';
 
@@ -8,29 +7,10 @@ type Product = {
   id: string;
   name: string;
   slug: string;
-  unit: string;
+
   images: { url: string; altText: string | null }[];
   type?: { name: string; group: { name: string } } | null;
   options: { id: string; name: string; values: { id: string; value: string }[] }[];
-};
-
-const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: 'unidad',
-  METRO: 'metro(s)',
-  METRO_CUADRADO: 'm²',
-  METRO_LINEAL: 'ml',
-  KILOGRAMO: 'kg',
-  LIBRA: 'lb',
-  PAQUETE_1000: 'paquete(s) de 1000 unidades',
-  PAQUETE_500: 'paquete(s) de 500 unidades',
-  PAQUETE_250: 'paquete(s) de 250 unidades',
-  PAQUETE_100: 'paquete(s) de 100 unidades',
-  PAQUETE_10: 'paquete(s) de 10 unidades',
-  DOCENA: 'docena(s)',
-  PAR: 'par(es)',
-  JUEGO: 'juego(s)',
-  ROLLO: 'rollo(s)',
-  CAJA: 'caja(s)',
 };
 
 interface AddToListModalProps {
@@ -45,15 +25,9 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
     ...(product.type ? { Producto: product.type.group.name, Tipo: product.type.name } : {}),
     ...Object.fromEntries(product.options.map((o) => [o.name, o.values[0]?.value || ''])),
   });
-  const [quantity, setQuantity] = useState(1);
-  const step = quantityStep(product.unit);
-  const minimum = step;
-  const normalize = (value: number) => normalizeQuantity(value, product.unit);
   const [added, setAdded] = useState(false);
 
   if (!isOpen) return null;
-
-  const unitLabel = UNIT_LABELS[product.unit] || product.unit;
 
   const handleAdd = () => {
     const mainImage = product.images[0]?.url || null;
@@ -62,9 +36,8 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
       productName: product.name,
       productSlug: product.slug,
       productImage: mainImage,
-      unit: product.unit,
+
       selectedOptions: { ...selection },
-      quantity,
     });
     setAdded(true);
     setTimeout(() => {
@@ -102,7 +75,6 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
           )}
           <div>
             <p className="font-semibold text-gray-900">{product.name}</p>
-            <p className="text-sm text-gray-500">Venta por {unitLabel}</p>
           </div>
         </div>
 
@@ -127,39 +99,6 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
               </div>
             </div>
           ))}
-
-          <div>
-            <label
-              htmlFor="requested-quantity"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Cantidad ({unitLabel})
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setQuantity((q) => normalize(q - step))}
-                className="h-9 w-9 rounded-lg border border-gray-300 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
-              >
-                -
-              </button>
-              <input
-                id="requested-quantity"
-                type="number"
-                min={minimum}
-                step={step}
-                max={999999}
-                value={quantity}
-                onChange={(e) => setQuantity(normalize(Number(e.target.value) || minimum))}
-                className="h-9 w-20 rounded-lg border border-gray-300 text-center text-sm"
-              />
-              <button
-                onClick={() => setQuantity((q) => normalize(q + step))}
-                className="h-9 w-9 rounded-lg border border-gray-300 flex items-center justify-center text-lg font-bold hover:bg-gray-100"
-              >
-                +
-              </button>
-            </div>
-          </div>
         </div>
 
         <a
@@ -168,7 +107,7 @@ export default function AddToListModal({ product, isOpen, onClose }: AddToListMo
               selection,
             )
               .map(([key, value]) => key + ': ' + value)
-              .join(', ')})? Necesito ${quantity} ${unitLabel}.`,
+              .join(', ')})?`,
           )}`}
           target="_blank"
           rel="noopener noreferrer"

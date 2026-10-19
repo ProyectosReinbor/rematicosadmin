@@ -1,37 +1,18 @@
 'use client';
 
-import { quantityStep } from '../../lib/quantity';
 import Link from 'next/link';
 import { useShoppingList } from '../../lib/shopping-list-context';
 
-const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: 'unidad',
-  METRO: 'metro(s)',
-  METRO_CUADRADO: 'm²',
-  METRO_LINEAL: 'ml',
-  KILOGRAMO: 'kg',
-  LIBRA: 'lb',
-  PAQUETE_1000: 'paquete(s) de 1000 unidades',
-  PAQUETE_500: 'paquete(s) de 500 unidades',
-  PAQUETE_250: 'paquete(s) de 250 unidades',
-  PAQUETE_100: 'paquete(s) de 100 unidades',
-  DOCENA: 'docena(s)',
-  PAR: 'par(es)',
-  JUEGO: 'juego(s)',
-  ROLLO: 'rollo(s)',
-  CAJA: 'caja(s)',
-};
-
 export default function ShoppingListPage() {
-  const { items, removeItem, updateQuantity, clearList } = useShoppingList();
+  const { items, removeItem, clearList } = useShoppingList();
 
   const buildWhatsAppMessage = () => {
     const lines = items.map((item) => {
       const attrs = Object.entries(item.selectedOptions)
         .map(([k, v]) => `${k}: ${v}`)
         .join(', ');
-      const unitLabel = UNIT_LABELS[item.unit] || item.unit;
-      return `- ${item.productName}${attrs ? ` (${attrs})` : ''}: ${item.quantity} ${unitLabel}`;
+
+      return `- ${item.productName}${attrs ? ` (${attrs})` : ''}`;
     });
     return `Hola, me interesa consultar disponibilidad de los siguientes productos:\n\n${lines.join('\n')}\n\nGracias!`;
   };
@@ -85,7 +66,7 @@ export default function ShoppingListPage() {
     <main className="mx-auto max-w-4xl px-4 py-6 sm:py-10">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mi lista de compra</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Mi lista de consulta</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {items.length} producto{items.length !== 1 ? 's' : ''} en tu lista
           </p>
@@ -109,7 +90,7 @@ export default function ShoppingListPage() {
       <div className="space-y-3">
         {items.map((item) => {
           const attrs = Object.entries(item.selectedOptions);
-          const unitLabel = UNIT_LABELS[item.unit] || item.unit;
+
           return (
             <div
               key={item.id}
@@ -155,7 +136,6 @@ export default function ShoppingListPage() {
                       ))}
                     </div>
                   )}
-                  <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Venta por {unitLabel}</p>
                 </div>
                 <button
                   onClick={() => removeItem(item.id)}
@@ -171,35 +151,6 @@ export default function ShoppingListPage() {
                     />
                   </svg>
                 </button>
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                <span className="text-sm font-semibold text-gray-900">
-                  {item.quantity} {unitLabel}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - quantityStep(item.unit))}
-                    className="h-9 w-9 rounded-xl border border-gray-200 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition text-sm"
-                  >
-                    -
-                  </button>
-                  <input
-                    aria-label={`Cantidad de ${item.productName}`}
-                    type="number"
-                    min={quantityStep(item.unit)}
-                    step={quantityStep(item.unit)}
-                    max={999999}
-                    value={item.quantity}
-                    onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                    className="w-20 rounded-lg border p-2 text-center text-sm font-semibold tabular-nums"
-                  />
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + quantityStep(item.unit))}
-                    className="h-9 w-9 rounded-xl border border-gray-200 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition text-sm"
-                  >
-                    +
-                  </button>
-                </div>
               </div>
             </div>
           );
@@ -225,7 +176,6 @@ export default function ShoppingListPage() {
         </h2>
         <div className="space-y-2 text-sm mb-5">
           {items.map((item) => {
-            const unitLabel = UNIT_LABELS[item.unit] || item.unit;
             const attrs = Object.values(item.selectedOptions).join(', ');
             return (
               <div
@@ -235,9 +185,6 @@ export default function ShoppingListPage() {
                 <span className="text-gray-600 truncate min-w-0">
                   {item.productName}
                   {attrs ? ` (${attrs})` : ''}
-                </span>
-                <span className="shrink-0 font-semibold text-gray-900 text-right">
-                  {item.quantity} {unitLabel}
                 </span>
               </div>
             );

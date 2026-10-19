@@ -27,31 +27,13 @@ interface ProductFormProps {
   onCancel: () => void;
 }
 
-const UNIT_OPTIONS = [
-  { value: "UNIDAD", label: "Unidad" },
-  { value: "DOCENA", label: "Docena" },
-  { value: "PAR", label: "Par" },
-  { value: "JUEGO", label: "Juego" },
-  { value: "LIBRA", label: "Libra" },
-  { value: "KILOGRAMO", label: "Kilogramo" },
-  { value: "METRO", label: "Metro" },
-  { value: "METRO_CUADRADO", label: "Metro cuadrado" },
-  { value: "METRO_LINEAL", label: "Metro lineal" },
-  { value: "ROLLO", label: "Rollo" },
-  { value: "CAJA", label: "Caja" },
-  { value: "PAQUETE_10", label: "Paquete de 10" },
-  { value: "PAQUETE_100", label: "Paquete de 100" },
-  { value: "PAQUETE_250", label: "Paquete de 250" },
-  { value: "PAQUETE_500", label: "Paquete de 500" },
-  { value: "PAQUETE_1000", label: "Paquete de 1000" },
-];
 
 export default function ProductForm({ categories, product, onSaved, onCancel }: ProductFormProps) {
   const isEdit = !!product;
   const [name, setName] = useState(product?.name || "");
   const [description, setDescription] = useState(product?.description || "");
   const [details, setDetails] = useState(product?.details || "");
-  const [unit, setUnit] = useState(product?.unit || "UNIDAD");
+
   const [categoryId, setCategoryId] = useState(product?.category?.id || "");
   const [status, setStatus] = useState<ProductStatus>(product?.status || "DRAFT");
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured || false);
@@ -129,7 +111,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
     setError(""); setSuccess(""); setUploading(true);
     try {
       if (isEdit && product) {
-        await fullUpdateProduct(product.id, { name, description, details: details || null, unit, categoryId, status, isFeatured });
+        await fullUpdateProduct(product.id, { name, description, details: details || null, categoryId, status, isFeatured });
 
         if (newImageFiles.length > 0) {
           const uploaded = await uploadImages(newImageFiles, name);
@@ -162,7 +144,7 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
           imagesPayload = uploaded.map((img) => ({ url: img.url, altText: name }));
         }
         await createCatalogProduct({
-          name, description, details: details || undefined, unit, categoryId, status, isFeatured,
+          name, description, details: details || undefined, categoryId, status, isFeatured,
           images: imagesPayload,
           options: options.filter((o) => o.name && o.values.length > 0).map((o) => ({
             name: o.name,
@@ -199,12 +181,6 @@ export default function ProductForm({ categories, product, onSaved, onCancel }: 
           <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
             <option value="">Selecciona una categoría</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.icon ? `${c.icon} ${c.name}` : c.name}</option>)}
-          </select>
-        </label>
-        <label className="text-sm font-medium text-gray-700">
-          Unidad de venta
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} className="mt-1.5 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition appearance-none">
-            {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
           </select>
         </label>
         <label className="text-sm font-medium text-gray-700 sm:col-span-2">

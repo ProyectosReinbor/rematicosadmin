@@ -140,7 +140,7 @@ export default function HomePage() {
               <strong>1. Encuentra tus productos.</strong> Elige categoría, producto y tipo.
             </li>
             <li>
-              <strong>2. Indica cuánto necesitas.</strong> Cada tarjeta muestra su presentación.
+              <strong>2. Arma tu lista.</strong> Elige los productos que te interesan.
             </li>
             <li>
               <strong>3. Consulta por WhatsApp.</strong> Envía tu lista para confirmar

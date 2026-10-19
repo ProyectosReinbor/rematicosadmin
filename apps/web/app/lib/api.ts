@@ -60,11 +60,9 @@ export async function apiRequest<T>(url: string, options?: RequestInit): Promise
 
   if (res.status === 204) return undefined as T;
 
-  const data = await res
-    .json()
-    .catch(() => ({
-      error: { message: 'No fue posible conectar con el servidor. Intenta nuevamente.' },
-    }));
+  const data = await res.json().catch(() => ({
+    error: { message: 'No fue posible conectar con el servidor. Intenta nuevamente.' },
+  }));
   if (!res.ok) {
     throw new Error(data.error?.message || `HTTP ${res.status}`);
   }
@@ -267,7 +265,7 @@ export interface CatalogProduct {
   slug: string;
   description: string;
   details: string | null;
-  unit: string;
+
   status: ProductStatus;
   isFeatured: boolean;
   category: CatalogCategory;
@@ -291,7 +289,7 @@ export interface ProductInput {
   name: string;
   description: string;
   details?: string;
-  unit?: string;
+
   categoryId: string;
   status: ProductStatus;
   isFeatured?: boolean;
@@ -355,7 +353,7 @@ export async function fullUpdateProduct(
     name?: string;
     description?: string;
     details?: string | null;
-    unit?: string;
+
     categoryId?: string;
     status?: ProductStatus;
     isFeatured?: boolean;

@@ -1,6 +1,5 @@
 'use client';
 
-import { normalizeQuantity } from './quantity';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 export type ListItem = {
@@ -9,16 +8,14 @@ export type ListItem = {
   productName: string;
   productSlug: string;
   productImage: string | null;
-  unit: string;
+
   selectedOptions: Record<string, string>;
-  quantity: number;
 };
 
 type ShoppingListContextType = {
   items: ListItem[];
   addItem: (item: Omit<ListItem, 'id'>) => void;
   removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
   clearList: () => void;
   totalItems: number;
 };
@@ -42,14 +39,21 @@ export function ShoppingListProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed))
           setItems(
-            parsed.filter(
-              (item) =>
-                item &&
-                typeof item.productId === 'string' &&
-                typeof item.unit === 'string' &&
-                Number.isFinite(item.quantity) &&
-                item.quantity > 0,
-            ),
+            parsed
+              .filter(
+                (item) =>
+                  item &&
+                  typeof item.productId === 'string' &&
+                  typeof item.productName === 'string',
+              )
+              .map((item) => ({
+                id: item.id,
+                productId: item.productId,
+                productName: item.productName,
+                productSlug: item.productSlug,
+                productImage: item.productImage,
+                selectedOptions: item.selectedOptions || {},
+              })),
           );
       }
     } catch {}
@@ -70,20 +74,10 @@ export function ShoppingListProvider({ children }: { children: ReactNode }) {
         JSON.stringify(Object.entries(options).sort(([a], [b]) => a.localeCompare(b)));
       const existing = prev.find(
         (i) =>
-          i.productId === item.productId &&
-          i.unit === item.unit &&
-          key(i.selectedOptions) === key(item.selectedOptions),
+          i.productId === item.productId && key(i.selectedOptions) === key(item.selectedOptions),
       );
-      if (existing)
-        return prev.map((i) =>
-          i.id === existing.id
-            ? { ...i, quantity: normalizeQuantity(i.quantity + item.quantity, i.unit) }
-            : i,
-        );
-      return [
-        ...prev,
-        { ...item, quantity: normalizeQuantity(item.quantity, item.unit), id: generateId() },
-      ];
+      if (existing) return prev;
+      return [...prev, { ...item, id: generateId() }];
     });
   }, []);
 
@@ -91,17 +85,11 @@ export function ShoppingListProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const updateQuantity = useCallback((id: string, quantity: number) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity: normalizeQuantity(quantity, i.unit) } : i)),
-    );
-  }, []);
-
   const clearList = useCallback(() => setItems([]), []);
 
   return (
     <ShoppingListContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearList, totalItems: items.length }}
+      value={{ items, addItem, removeItem, clearList, totalItems: items.length }}
     >
       {children}
     </ShoppingListContext.Provider>

@@ -13,7 +13,7 @@ type Product = {
   slug: string;
   description: string;
   details: string | null;
-  unit: string;
+
   category: { name: string; slug: string };
   type?: { name: string; group: { name: string } } | null;
   images: ProductImage[];
@@ -21,25 +21,6 @@ type Product = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-
-const UNIT_LABELS: Record<string, string> = {
-  UNIDAD: 'unidad',
-  METRO: 'metro(s)',
-  METRO_CUADRADO: 'm²',
-  METRO_LINEAL: 'ml',
-  KILOGRAMO: 'kg',
-  LIBRA: 'lb',
-  PAQUETE_1000: 'paquete(s)',
-  PAQUETE_500: 'paquete(s)',
-  PAQUETE_250: 'paquete(s)',
-  PAQUETE_100: 'paquete(s)',
-  PAQUETE_10: 'paquete(s)',
-  DOCENA: 'docena(s)',
-  PAR: 'par(es)',
-  JUEGO: 'juego(s)',
-  ROLLO: 'rollo(s)',
-  CAJA: 'caja(s)',
-};
 
 export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -287,17 +268,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
                 {product.name}
               </h1>
-              <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                  />
-                </svg>
-                Venta por {UNIT_LABELS[product.unit] || product.unit}
-              </div>
             </div>
 
             <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5">
@@ -398,7 +368,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             id: product.id,
             name: product.name,
             slug: product.slug,
-            unit: product.unit,
+
             images: product.images,
             options: product.options,
           }}

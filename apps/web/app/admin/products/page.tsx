@@ -1,6 +1,8 @@
 'use client';
 import { FormEvent, useEffect, useState } from 'react';
 import { apiRequest, uploadImages } from '../../lib/api';
+import CatalogBackup from './CatalogBackup';
+import BulkCards from './BulkCards';
 type Node = { id: string; name: string };
 type Category = Node & { slug: string; groups: (Node & { types: Node[] })[] };
 type Card = Node & {
@@ -8,7 +10,7 @@ type Card = Node & {
   categoryId: string;
   typeId: string | null;
   description: string;
-  unit: string;
+
   status: string;
   images: { url: string }[];
 };
@@ -31,7 +33,7 @@ export default function ProductsPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
-  const [unit, setUnit] = useState('Unidad');
+
   const [status, setStatus] = useState('PUBLISHED');
   const [file, setFile] = useState<File | null>(null);
   const [image, setImage] = useState('');
@@ -129,7 +131,7 @@ export default function ProductsPage() {
       if (!imageUrl) throw new Error('Sube una imagen para la tarjeta');
       const body = {
         name,
-        unit: unit.trim(),
+
         categoryId,
         typeId,
         status,
@@ -159,7 +161,7 @@ export default function ProductsPage() {
     setTypeId(card.typeId || '');
     setEditing(card);
     setName(card.name);
-    setUnit(card.unit);
+
     setStatus(card.status);
     setImage(card.images[0]?.url || '');
     setFile(null);
@@ -174,6 +176,18 @@ export default function ProductsPage() {
           Categoría → producto → tipo → tarjetas. Sin precios, con consultas por WhatsApp.
         </p>
       </div>
+      <CatalogBackup
+        onRestored={() => {
+          setCategoryId('');
+          setGroupId('');
+          setTypeId('');
+          setPage(1);
+          setFormOpen(false);
+          setEditing(null);
+          setNodeForm(null);
+          setRevision((value) => value + 1);
+        }}
+      />
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">
           {error}
@@ -219,6 +233,7 @@ export default function ProductsPage() {
                   className={`rounded-xl border p-2 ${level.selected === node.id ? 'border-red-500 bg-red-50' : ''}`}
                 >
                   <button
+                    disabled={busy}
                     className="w-full text-left font-medium p-1"
                     onClick={() => {
                       setPage(1);
@@ -303,7 +318,7 @@ export default function ProductsPage() {
           onClick={() => {
             setEditing(null);
             setName('');
-            setUnit('Unidad');
+
             setStatus('PUBLISHED');
             setImage('');
             setFile(null);
@@ -318,6 +333,20 @@ export default function ProductsPage() {
           Selecciona un tipo para agregar tarjetas. Las tarjetas antiguas se pueden editar para
           clasificarlas.
         </p>
+      )}
+      {typeId && (
+        <BulkCards
+          disabled={busy}
+          key={typeId}
+          categoryId={categoryId}
+          typeId={typeId}
+          destination={`${category?.name} → ${group?.name} → ${group?.types.find((type) => type.id === typeId)?.name}`}
+          onBusyChange={setBusy}
+          onCreated={() => {
+            setPage(1);
+            setRevision((value) => value + 1);
+          }}
+        />
       )}
       {formOpen && (
         <form onSubmit={saveCard} className="rounded-2xl border bg-white p-5 space-y-4">
@@ -337,35 +366,6 @@ export default function ProductsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </label>
-          <label className="block">
-            Cómo se vende
-            <input
-              required
-              maxLength={60}
-              list="units"
-              className={input}
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-            />
-            <datalist id="units">
-              {[
-                'Unidad',
-                'Kilogramo',
-                'Docena',
-                'Rollo',
-                'Metro',
-                'Paquete de 10 unidades',
-                'Paquete de 100 unidades',
-                'Caja',
-                'Par',
-              ].map((u) => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
-            <span className="text-sm text-gray-500">
-              Elige una presentación o escribe una nueva, por ejemplo: paquete de 24 unidades.
-            </span>
           </label>
           <label className="block">
             Imagen del producto
@@ -413,7 +413,7 @@ export default function ProductsPage() {
               )}
               <h3 className="font-bold mt-3">{card.name}</h3>
               <p className="text-sm text-gray-600">
-                {card.unit} · {card.status === 'PUBLISHED' ? 'Publicado' : 'Oculto'}
+                {card.status === 'PUBLISHED' ? 'Publicado' : 'Oculto'}
               </p>
               {!card.typeId && (
                 <p className="text-xs text-amber-800 mt-2">Pendiente de clasificar</p>
